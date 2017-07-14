@@ -589,24 +589,6 @@ void idle_func()
 	glutPostRedisplay();
 }
 
-//void initParameters()
-//{
-//	srand(time(0x0));
-//	
-//	// Initialize camera
-//	cam.setOrbit(Vector3DF(200, 30, 0), Vector3DF(2, 30, 2), 400, 400);
-//	cam.setFov(35);
-//	cam.updateMatricies();
-//
-//	light[0].x = 0;		light[0].y = 200;	light[0].z = 0; light[0].w = 1;
-//	light_to[0].x = 0;	light_to[0].y = 0;	light_to[0].z = 0; light_to[0].w = 1;
-//
-//	light[1].x = 55;		light[1].y = 140;	light[1].z = 50;	light[1].w = 1;
-//	light_to[1].x = 0;	light_to[1].y = 0;	light_to[1].z = 0;		light_to[1].w = 1;
-//
-//	light_fov = 45;
-//}
-
 
 #include "GL/glew.h"
 #include "GL/freeglut.h"
@@ -618,6 +600,9 @@ void Destroy() {
 void SolverGUI::Initialize(int argc, char** argv){
 	// Initialize CUDA
 	cudaInit(argc, argv);
+
+
+
 
 	// set up the window
 	glutInit(&argc, &argv[0]);
@@ -634,6 +619,22 @@ void SolverGUI::Initialize(int argc, char** argv){
 	
 	glutCreateWindow("Multiphase Nekobus");
 
+
+
+
+
+	GLenum GlewInitResult = glewInit();
+	if (GLEW_OK != GlewInitResult) {
+		fprintf(stderr, "ERROR: %s\n", glewGetErrorString(GlewInitResult));
+		exit(EXIT_FAILURE);
+	}
+
+	fprintf(stdout, "INFO: OpenGL Version: %s\n", glGetString(GL_VERSION));
+	glClearColor(0, 0, 0, 0);
+
+
+
+
 	// callbacks
 	glutDisplayFunc(display);
 	glutReshapeFunc(resize);
@@ -649,14 +650,10 @@ void SolverGUI::Initialize(int argc, char** argv){
 	//glutPassiveMotionFunc(mouse_move_func);
 	glutIdleFunc(idle_func);
 
-	GLenum GlewInitResult = glewInit();
-	if(GLEW_OK != GlewInitResult){
-		fprintf(stderr, "ERROR: %s\n", glewGetErrorString(GlewInitResult));
-		exit(EXIT_FAILURE);
-	}
 
-	fprintf(stdout, "INFO: OpenGL Version: %s\n", glGetString(GL_VERSION));
-	glClearColor(0,0,0,0);
+
+
+
 
 	//Camera Parameters
 	ModelMatrix = IDENTITY_MAT;
@@ -665,10 +662,17 @@ void SolverGUI::Initialize(int argc, char** argv){
 	camera.lookat(cfloat3(0, 40, 60), cfloat3(0, 20, -40));
 	ViewMatrix = camera.viewmat;
 	
+
+
+
+
 	//Shaders & VAO, VBO
 	CreateParticleSystem();
 
-	//initParameters();
+	
+
+
+
 
 	//Texture
 	int width,height;
@@ -860,22 +864,9 @@ void SolverGUI::DestroyCube(){
 	ExitOnGLError("ERROR: Could not destroy the buffer objects");
 }
 
-float pos[] ={-.5,-.5,.5,
--.5,.5,.5,
-.5,.5,.5,
-.5,-.5,.5,
--.5,-.5,-.5,
--.5,.5,-.5,
-.5,.5,-.5,
-.5,-.5,-.5};
-float color[]={0,0,1,1,
-1,0,0,1,
-0,1,0,1,
-1,1,0,1,
-1,1,1,1,
-1,0,0,1,
-1,0,1,1,
-0,0,1,1};
+
+
+
 
 void SolverGUI::DrawParticleSystem(){
 	
@@ -952,10 +943,14 @@ void SolverGUI::DrawCube(){
 	glUseProgram(0);
 }
 
+
+
+
+
+
 void SolverGUI::SetupSolver(){
 	psys = new FluidSystem();
 	psys->Setup(true);
-	//psys->SetupRender();
 }
 
 void SolverGUI::Run(){

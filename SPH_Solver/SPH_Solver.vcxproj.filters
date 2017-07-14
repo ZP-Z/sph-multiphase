@@ -4,9 +4,6 @@
     <ClCompile Include="fluids\fluid_system.cpp">
       <Filter>fluid</Filter>
     </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>fluid</Filter>
-    </ClCompile>
     <ClCompile Include="FluidIOUtility.cpp">
       <Filter>fluid</Filter>
     </ClCompile>
@@ -14,9 +11,6 @@
       <Filter>fluid</Filter>
     </ClCompile>
     <ClCompile Include="AddShape.cpp">
-      <Filter>fluid</Filter>
-    </ClCompile>
-    <ClCompile Include="SolverGUI.cpp">
       <Filter>fluid</Filter>
     </ClCompile>
     <ClCompile Include="glUtils.cpp">
@@ -28,6 +22,12 @@
     <ClCompile Include="catXMLHelper.cpp">
       <Filter>cat_paw</Filter>
     </ClCompile>
+    <ClCompile Include="SolverGUI.cpp">
+      <Filter>GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>GUI</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="fluids\fluid_system.h">
@@ -35,9 +35,6 @@
     </ClInclude>
     <ClInclude Include="fluids\fluidMath.cuh">
       <Filter>fluid\CudaCode</Filter>
-    </ClInclude>
-    <ClInclude Include="SolverGUI.h">
-      <Filter>fluid</Filter>
     </ClInclude>
     <ClInclude Include="fluids\svd3_cuda.h">
       <Filter>fluid\CudaCode</Filter>
@@ -57,11 +54,14 @@
     <ClInclude Include="catXMLhelper.h">
       <Filter>cat_paw</Filter>
     </ClInclude>
-    <ClInclude Include="tinyxml2.h">
-      <Filter>fluid</Filter>
-    </ClInclude>
     <ClInclude Include="common_header.h">
       <Filter>fluid</Filter>
+    </ClInclude>
+    <ClInclude Include="SolverGUI.h">
+      <Filter>GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="tinyxml2.h">
+      <Filter>GUI</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -81,6 +81,9 @@
     </Filter>
     <Filter Include="cat_paw">
       <UniqueIdentifier>{28f444cc-2717-476d-8a6b-ffa1b611d127}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GUI">
+      <UniqueIdentifier>{7cedaf9a-146c-40d9-b157-6bdaab3e49f9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

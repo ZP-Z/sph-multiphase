@@ -1,7 +1,7 @@
 <Fluid>
 	<IntStiff>		1.5	</IntStiff>
 	<ExtStiff>	0.5	</ExtStiff>
-	<AccelLimit>	150.0		</AccelLimit>
+	<AccelLimit>	1500.0		</AccelLimit>
 	<VelLimit>		1		</VelLimit>
 	<Gravity>	0,-9.8,0		</Gravity>
 	<VolMin> -60, -20, -60 </VolMin>
@@ -9,7 +9,7 @@
 </Fluid>
 
 <MultiScene id="2">
-	<Num> 50000 </Num>
+	<Num> 20000 </Num>
 	<SimScale>		0.005		</SimScale>
 	<Name>		Test 	</Name>
 	<DT>			0.0005 </DT>
@@ -30,8 +30,8 @@
 	<SoftBoundMin>	-35, 0, -35 </SoftBoundMin>
 	<SoftBoundMax>	 35, 180, 35 </SoftBoundMax>
 	
-    <VolMin0>		 -10, 5, -10	</VolMin0>
-	<VolMax0>		 10, 50,  10	</VolMax0>
+    <VolMin0>		 -20, 5, -20	</VolMin0>
+	<VolMax0>		 20, 30,  20	</VolMax0>
 
 	<VolMin1>		 -20, 12, -10	</VolMin1>
 	<VolMax1>		  -2, 32,  10	</VolMax1>
