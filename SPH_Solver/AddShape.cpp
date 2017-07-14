@@ -10,99 +10,54 @@ int FluidSystem::AddParticle ()
 {
 	if ( pointNum >= maxPointNum ) return -1;
 	int n = pointNum;
-	(mPos + n)->Set ( 0,0,0 );
-	(mVel + n)->Set ( 0,0,0 );
-	(mVelEval + n)->Set ( 0,0,0 );
-	(mForce + n)->Set ( 0,0,0 );
-	*(mPressure + n) = 0;
-	*(mDensity + n) = 0;
-	
-//#ifdef NEW_BOUND
-	*(mIsBound+n) = 0;
-//#endif
 
-	//multi fluid
-	memset(m_alpha + n*MAX_FLUIDNUM,0,MAX_FLUIDNUM*sizeof(float));
-	memset(m_alpha_pre + n*MAX_FLUIDNUM,0,MAX_FLUIDNUM*sizeof(float));
-	memset(m_pressure_modify + n,0,sizeof(float));
-	memset(m_vel_phrel+n*MAX_FLUIDNUM,0,MAX_FLUIDNUM*sizeof(cfloat3));
-	memset(m_alphagrad+n*MAX_FLUIDNUM,0,MAX_FLUIDNUM*sizeof(cfloat3));
-	*(m_restMass + n) = 0;
-	*(m_restDensity + n) = 0;
-	*(m_visc + n) = 0;
-	(m_velxcor + n)->Set(0,0,0);
-	
-	MF_id[n] = n; //born id
-	//project-u
-	for(int k=0; k<9; k++){
-		//*(MF_tensor+n*9+k) = unitMatrix[k];
-		*(MF_tensor+n*9+k) =0;
-	}
+	calculationBuffer[n].vel.Set(0,0,0);
+	calculationBuffer[n].veleval.Set(0,0,0);
+	calculationBuffer[n].bornid = n;
+
 	pointNum++;
 	return n;
 }
 
 void FluidSystem::SetupMfAddVolume ( cfloat3 min, cfloat3 max, float spacing, cfloat3 offs, int cat )
 {
+	if(pointNum==maxPointNum)
+		printf("Max pointnum reached.\n");
+
 	cfloat3 pos;
 	int n = 0, p;
-	float dx, dy, dz, x, y, z;
 	int cntx, cnty, cntz;
-	cntx = ceil( (max.x-min.x-offs.x) / spacing );
-	cntz = ceil( (max.z-min.z-offs.z) / spacing );
-	int cnt = cntx * cntz;
-	int xp, yp, zp, c2;
-	float odd;
+	cfloat3 cnts = (max - min) / spacing;
 
-	if(cat >= fluidnum) return;
-	
-	dx = max.x-min.x;
-	dy = max.y-min.y;
-	dz = max.z-min.z;
 	float randx[3];
 	float ranlen = 0.2;
 
-	c2 = cnt/2;
-	for (float y = min.y+offs.y; y <= max.y; y += spacing ) {	
-		for (int xz=0; xz < cnt; xz++ ) {
-			randx[0] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
-			randx[1] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
-			randx[2] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
+	for (int y = 0; y < cnts.y; y ++ ) {	
+		for(int z=0; z < cnts.z; z++){
+			for (int x=0; x < cnts.x; x++) {
+				cfloat3 rand3(rand(), rand(), rand());
+				rand3 = rand3/RAND_MAX*ranlen - ranlen*0.5;
+				pos = cfloat3(x,y,z)*spacing + min + rand3;
+				
+				p = AddParticle();
+				if(p >= 0){
+					displayBuffer[p].pos = pos;
+					//displayBuffer[p].color.Set((float)rand()/RAND_MAX, (float)rand()/RAND_MAX, (float)rand()/RAND_MAX,1.0);
+					displayBuffer[p].color.Set(0.2, 0.5, 0.8, 0.5);
+					displayBuffer[p].type = 0;
 
-			x = min.x+offs.x + (xz % int(cntx))*spacing;
-			z = min.z+offs.z + (xz / int(cntx))*spacing;
-
-			p = AddParticle ();
-			if ( p != -1 ) {
-				n++;
-				(mPos+p)->Set ( x+randx[0],y+randx[1],z+randx[2]);
-
-				*(m_alpha+p*MAX_FLUIDNUM+cat) = 1.0f;
-                *(m_alpha_pre+p*MAX_FLUIDNUM+cat) = 1.0f;
-				*(m_restMass+p) = hostCarrier.massArr[cat];
-				*(m_restDensity+p) = hostCarrier.densArr[cat];
-                //mClr[p] = COLORA(m_alpha[p*MAX_FLUIDNUM],m_alpha[p*MAX_FLUIDNUM+1],m_alpha[p*MAX_FLUIDNUM+2],0.8);
-				//mColor[p].Set(0.2,0.6,0.7,1.0);
-				*(m_visc+p) = hostCarrier.viscArr[cat];
-				*(MF_type+p) = 0; 
-
-				displayBuffer[p].pos.Set(x+randx[0], y+randx[1], z+randx[2]);
-				displayBuffer[p].color.Set((float)rand()/RAND_MAX, (float)rand()/RAND_MAX, (float)rand()/RAND_MAX,1.0);
-				displayBuffer[p].type = 0;
-
-				calculationBuffer[p].restdens = hostCarrier.densArr[cat];
-				calculationBuffer[p].restmass = hostCarrier.massArr[cat];
-				calculationBuffer[p].visc = hostCarrier.viscArr[cat];
-
+					calculationBuffer[p].restdens = hostCarrier.densArr[cat];
+					calculationBuffer[p].mass = hostCarrier.massArr[cat];
+					calculationBuffer[p].visc = hostCarrier.viscArr[cat];
+				}
 			}
-			
 		}
 	}	
 	printf("%d fluid has %d particles\n",cat,n);
 }
 
 void FluidSystem::SetupAddBubble(cfloat3 min, cfloat3 max, float spacing, int constitution){
-    cfloat3 pos;
+   /* cfloat3 pos;
 	int n = 0, p;
 	float dx, dy, dz, x, y, z;
 	int cntx, cnty, cntz;
@@ -146,7 +101,7 @@ void FluidSystem::SetupAddBubble(cfloat3 min, cfloat3 max, float spacing, int co
 			}
 		}
 	}	
-	printf("%d fluid has %d particles\n",constitution,n);
+	printf("%d fluid has %d particles\n",constitution,n);*/
 }
 
 //void FluidSystem::SetupAddBound(BI2Reader bi2reader,int boundtype)
@@ -265,85 +220,85 @@ void FluidSystem::SetupAddBubble(cfloat3 min, cfloat3 max, float spacing, int co
 
 void FluidSystem::SetupAddSolid( cfloat3 min, cfloat3 max, float spacing, int composition){
 	
-	cfloat3 pos;
-	int n = 0, p;
-	float dx, dy, dz, x, y, z;
-	int cntx, cnty, cntz;
-	cntx = ceil( (max.x-min.x) / spacing );
-	cntz = ceil( (max.z-min.z) / spacing );
-	
-	//rotation initialization
-	cfloat3 mid = (min + max);
-	mid.x /= 2;
-	mid.y /= 2;
-	mid.z /= 2;
-	float radius = 0.5*(max.x - min.x);
-	int cnt = cntx * cntz;
-	int xp, yp, zp, c2;
-	float odd;
+	//cfloat3 pos;
+	//int n = 0, p;
+	//float dx, dy, dz, x, y, z;
+	//int cntx, cnty, cntz;
+	//cntx = ceil( (max.x-min.x) / spacing );
+	//cntz = ceil( (max.z-min.z) / spacing );
+	//
+	////rotation initialization
+	//cfloat3 mid = (min + max);
+	//mid.x /= 2;
+	//mid.y /= 2;
+	//mid.z /= 2;
+	//float radius = 0.5*(max.x - min.x);
+	//int cnt = cntx * cntz;
+	//int xp, yp, zp, c2;
+	//float odd;
 
-	dx = max.x-min.x;
-	dy = max.y-min.y;
-	dz = max.z-min.z;
-	
-	c2 = cnt/2;
+	//dx = max.x-min.x;
+	//dy = max.y-min.y;
+	//dz = max.z-min.z;
+	//
+	//c2 = cnt/2;
 
-	float xcenter = max.x - dx/2;
-	float ycenter = max.y - dy/2;
-	float zcenter = max.z - dz/2;
-	float omega = 1.0;
-	float rx,ry;
+	//float xcenter = max.x - dx/2;
+	//float ycenter = max.y - dy/2;
+	//float zcenter = max.z - dz/2;
+	//float omega = 1.0;
+	//float rx,ry;
 
-	float randx[3]={0,0,0};
-	float ranlen = 0.2;
-	int xi, yi, zi;
+	//float randx[3]={0,0,0};
+	//float ranlen = 0.2;
+	//int xi, yi, zi;
 
-	for (float y = min.y; y <= max.y; y += spacing ) {	
+	//for (float y = min.y; y <= max.y; y += spacing ) {	
 
-		for (int xz=0; xz < cnt; xz++ ) {
-			xi = xz % cntx;
-			zi = xz / cntx;
-			yi = y / spacing;
+	//	for (int xz=0; xz < cnt; xz++ ) {
+	//		xi = xz % cntx;
+	//		zi = xz / cntx;
+	//		yi = y / spacing;
 
-			x = min.x + (xz % int(cntx))*spacing;
-			z = min.z + (xz / int(cntx))*spacing;
+	//		x = min.x + (xz % int(cntx))*spacing;
+	//		z = min.z + (xz / int(cntx))*spacing;
 
-			//if (((x-min.x)*(x-min.x)+(y-ycenter)*(y-ycenter)+(z-min.z)*(z-min.z))<225)
-			//	continue;
+	//		//if (((x-min.x)*(x-min.x)+(y-ycenter)*(y-ycenter)+(z-min.z)*(z-min.z))<225)
+	//		//	continue;
 
-			
-			
-			/*float dis = sqrtf((x - mid.x)*(x - mid.x) + (y - mid.y)*(y - mid.y) + (z - mid.z)*(z - mid.z));
-			if (dis > radius)
-				continue;*/
-			
-			p = AddParticle ();
-			if ( p != -1 ) {
-				n++;
+	//		
+	//		
+	//		/*float dis = sqrtf((x - mid.x)*(x - mid.x) + (y - mid.y)*(y - mid.y) + (z - mid.z)*(z - mid.z));
+	//		if (dis > radius)
+	//			continue;*/
+	//		
+	//		p = AddParticle ();
+	//		if ( p != -1 ) {
+	//			n++;
 
-				//randx[0] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
-				//randx[1] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
-				//randx[2] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
+	//			//randx[0] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
+	//			//randx[1] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
+	//			//randx[2] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
 
-				(mPos+p)->Set ( x+randx[0],y+randx[1],z+randx[2]);
-                
-				*(m_alpha     + p*MAX_FLUIDNUM + composition) = 1.0f;
-                *(m_alpha_pre + p*MAX_FLUIDNUM + composition) = 1.0f;
-                mClr[p] = COLORA( m_alpha[p*MAX_FLUIDNUM], m_alpha[p*MAX_FLUIDNUM+1], m_alpha[p*MAX_FLUIDNUM+2],1);
+	//			(mPos+p)->Set ( x+randx[0],y+randx[1],z+randx[2]);
+ //               
+	//			*(m_alpha     + p*MAX_FLUIDNUM + composition) = 1.0f;
+ //               *(m_alpha_pre + p*MAX_FLUIDNUM + composition) = 1.0f;
+ //               mClr[p] = COLORA( m_alpha[p*MAX_FLUIDNUM], m_alpha[p*MAX_FLUIDNUM+1], m_alpha[p*MAX_FLUIDNUM+2],1);
 
-				m_restMass[p] = hostCarrier.massArr[composition];
-				m_restDensity[p] = hostCarrier.densArr[composition];
-				m_visc[p] = hostCarrier.viscArr[composition];
-				MF_type[p] = 1; //1 means deformable
+	//			m_restMass[p] = hostCarrier.massArr[composition];
+	//			m_restDensity[p] = hostCarrier.densArr[composition];
+	//			m_visc[p] = hostCarrier.viscArr[composition];
+	//			MF_type[p] = 1; //1 means deformable
 
-				//rx = x - xcenter;
-				//ry = y - ycenter;
-				//mVel[p].Set( 0, -1, 0);
-				//mVel[p].Set( 0, , 0);
-			}
-		}
-	}	
-	printf("%d solid has %d particles\n",0,n);
+	//			//rx = x - xcenter;
+	//			//ry = y - ycenter;
+	//			//mVel[p].Set( 0, -1, 0);
+	//			//mVel[p].Set( 0, , 0);
+	//		}
+	//	}
+	//}	
+	//printf("%d solid has %d particles\n",0,n);
 }
 
 void read(FILE* fp, cfloat3& dst){
@@ -394,56 +349,56 @@ void FluidSystem::LoadBoundary(std::string boundfile){
 }
 
 void FluidSystem::SetupAddWall(cfloat3 min, cfloat3 max){
-    cfloat3 pos;
-	int n = 0, p;
-	float dx, dy, dz, x, y, z;
-	int cntx, cnty, cntz;
+ //   cfloat3 pos;
+	//int n = 0, p;
+	//float dx, dy, dz, x, y, z;
+	//int cntx, cnty, cntz;
 
-    float spacing = boundarySpacing;
-	cntx = ceil( (max.x-min.x) / spacing );
-	cntz = ceil( (max.z-min.z) / spacing );
-	
-	//rotation initialization
-	
-	int cnt = cntx * cntz;
-	int xp, yp, zp, c2;
-	float odd;
+ //   float spacing = boundarySpacing;
+	//cntx = ceil( (max.x-min.x) / spacing );
+	//cntz = ceil( (max.z-min.z) / spacing );
+	//
+	////rotation initialization
+	//
+	//int cnt = cntx * cntz;
+	//int xp, yp, zp, c2;
+	//float odd;
 
-	dx = max.x-min.x;
-	dy = max.y-min.y;
-	dz = max.z-min.z;
-	
-	c2 = cnt/2;
+	//dx = max.x-min.x;
+	//dy = max.y-min.y;
+	//dz = max.z-min.z;
+	//
+	//c2 = cnt/2;
 
-	float randx[3]={0,0,0};
-	float ranlen = 0.2;
+	//float randx[3]={0,0,0};
+	//float ranlen = 0.2;
 
-	for (float y = min.y; y <= max.y; y += spacing ) {	
-		for (int xz=0; xz < cnt; xz++ ) {
-			x = min.x + (xz % int(cntx))*spacing;
-			z = min.z + (xz / int(cntx))*spacing;
-			
-			p = AddParticle ();
-			if ( p != -1 ) {
-				n++;
-				/*
-				randx[0] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
-				randx[1] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
-				randx[2] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
-				*/
-				(mPos+p)->Set ( x+randx[0],y+randx[1],z+randx[2]);
-                
-                mClr[p] = COLORA( 1,1,1,0.7);
+	//for (float y = min.y; y <= max.y; y += spacing ) {	
+	//	for (int xz=0; xz < cnt; xz++ ) {
+	//		x = min.x + (xz % int(cntx))*spacing;
+	//		z = min.z + (xz / int(cntx))*spacing;
+	//		
+	//		p = AddParticle ();
+	//		if ( p != -1 ) {
+	//			n++;
+	//			/*
+	//			randx[0] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
+	//			randx[1] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
+	//			randx[2] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
+	//			*/
+	//			(mPos+p)->Set ( x+randx[0],y+randx[1],z+randx[2]);
+ //               
+ //               mClr[p] = COLORA( 1,1,1,0.7);
 
-				m_restMass[p] = hostCarrier.bmass;
-				m_restDensity[p] = hostCarrier.bRestdensity;			
-				m_visc[p] = hostCarrier.viscArr[0];
-				MF_type[p] = 0;
-                mIsBound[p] = 1;
+	//			m_restMass[p] = hostCarrier.bmass;
+	//			m_restDensity[p] = hostCarrier.bRestdensity;			
+	//			m_visc[p] = hostCarrier.viscArr[0];
+	//			MF_type[p] = 0;
+ //               mIsBound[p] = 1;
 
-			}
-		}
-	}	
+	//		}
+	//	}
+	//}	
 }
 
 void FluidSystem::SetupAddOpenBox(cfloat3 min, cfloat3 max, float thickness) {

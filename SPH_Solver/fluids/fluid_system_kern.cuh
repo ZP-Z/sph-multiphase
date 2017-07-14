@@ -7,40 +7,15 @@
 #include <stdio.h>
 #include <math.h>
 
-#include "fluid_system.h"
+#include "../common_header.h"
 #include "../geometry.h"
 	
 
 	// Temporary sort buffer offsets
-	#define BUF_POS			0
-	#define BUF_VEL			(sizeof(cfloat3))
-	#define BUF_VELEVAL		(BUF_VEL + sizeof(cfloat3))
-	#define BUF_FORCE		(BUF_VELEVAL + sizeof(cfloat3))
-	#define BUF_PRESS		(BUF_FORCE + sizeof(cfloat3))
-	//#define BUF_LAST_PRESS	(BUF_PRESS + sizeof(float))
-	#define BUF_DENS		(BUF_PRESS + sizeof(float))
-	#define BUF_GCELL		(BUF_DENS + sizeof(float))
-	#define BUF_GNDX		(BUF_GCELL + sizeof(uint))
-	#define BUF_CLR			(BUF_GNDX + sizeof(uint))
-	#define BUF_ISBOUND		(BUF_CLR + sizeof(uint))	
-	#define BUF_ACCEL		(BUF_ISBOUND + sizeof(uint))
-
-	//multi fluid sort buffer offsets
-	#define BUF_ALPHA		(BUF_ACCEL + sizeof(cfloat3))
-	#define BUF_ALPHAPRE	(BUF_ALPHA + sizeof(float)*MAX_FLUIDNUM)
-	#define BUF_PRESSMODI	(BUF_ALPHAPRE + sizeof(float)*MAX_FLUIDNUM)
-	#define	BUF_VELPHREL	(BUF_PRESSMODI + sizeof(float))
-	#define BUF_RMASS		(BUF_VELPHREL + sizeof(cfloat3)*MAX_FLUIDNUM)
-	#define BUF_RDENS		(BUF_RMASS + sizeof(float))
-	#define BUF_VISC		(BUF_RDENS + sizeof(float))
-	#define BUF_VELXCOR		(BUF_VISC + sizeof(float))
-	#define	BUF_ALPHAGRAD	(BUF_VELXCOR + sizeof(cfloat3))
-	#define BUF_INDICATOR   (BUF_ALPHAGRAD + sizeof(cfloat3)*MAX_FLUIDNUM)
-	#define BUF_TENSOR      (BUF_INDICATOR + sizeof(int))
-	#define BUF_TEMPTENSOR  (BUF_TENSOR + sizeof(float)*9)
-	#define BUF_RTENSOR		(BUF_TEMPTENSOR + sizeof(float)*9)
-	#define BUF_BORNID      (BUF_RTENSOR + sizeof(float)*9)
-#define BUF_DISPLAYBUF (BUF_BORNID + sizeof(int))
+	
+#define BUF_DISPLAYBUF 0
+#define BUF_CALCBUF (BUF_DISPLAYBUF + sizeof(displayPack))
+#define BUF_INTMBUF (BUF_CALCBUF + sizeof(calculationPack))
 
 	// Fluid Parameters (stored on both host and device)
 	struct FluidParams {

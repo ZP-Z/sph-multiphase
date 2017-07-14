@@ -14,28 +14,11 @@ int example = 2;
 
 float unitMatrix[9] = {1,0,0,    0,1,0,     0,0,1};
 
+extern bufList	fbuf;
+
+
 FluidSystem::FluidSystem ()
 {
-	mPos = 0x0;
-	mClr = 0x0;
-	mIsBound = 0x0;
-	mVel = 0x0;
-	mVelEval = 0x0;
-	mPressure = 0x0;
-	mDensity = NULL;
-	mForce = NULL;
-
-	m_alpha = NULL;
-	m_alpha_pre = NULL;
-	m_pressure_modify = NULL;
-	m_vel_phrel = NULL;
-
-	m_restMass = NULL;
-	m_restDensity = NULL;
-	m_visc = NULL;
-	m_velxcor = NULL;
-	m_alphagrad = NULL;
-
 }
 
 
@@ -58,30 +41,10 @@ void FluidSystem::Setup ( bool bStart )
 
 void FluidSystem::Exit ()
 {
-	free ( mPos );
-	free ( mClr );
-	free (mIsBound);
-	free ( mVel );
-	free ( mVelEval );
-	free ( mPressure );
-	free ( mDensity );
-	free ( mForce );
-	
-	//multi fluid
-	free (m_alpha);
-	free (m_alpha_pre);
-	free (m_pressure_modify);
-	free (m_vel_phrel);
-	free (m_restMass);
-	free (m_restDensity);
-	free (m_visc);
-	free (m_velxcor);
-	free (m_alphagrad);
-	free (MF_type);
-	free (MF_tensor);
+	delete displayBuffer;
+	delete calculationBuffer;
 
 	FluidClearCUDA();
-
 	cudaExit (0,0);
 }
 
@@ -105,41 +68,6 @@ void FluidSystem::AllocateParticles(int cnt)
 	displayBuffer = new displayPack[EMIT_BUF_RATIO * cnt];
 	calculationBuffer = new calculationPack[EMIT_BUF_RATIO*cnt];
 
-	mPos = (cfloat3*)malloc(EMIT_BUF_RATIO*cnt*sizeof(cfloat3));
-	mClr = (DWORD*)malloc(EMIT_BUF_RATIO*cnt*sizeof(DWORD));
-	mColor = new cfloat4[EMIT_BUF_RATIO*cnt];
-
-	mIsBound = (int*)malloc(cnt*sizeof(int));
-	mVel = (cfloat3*)malloc(EMIT_BUF_RATIO*cnt*sizeof(cfloat3));
-	mVelEval = (cfloat3*)malloc(EMIT_BUF_RATIO*cnt*sizeof(cfloat3));
-	mPressure = (float*)malloc(EMIT_BUF_RATIO*cnt*sizeof(float));
-	mDensity = (float*)malloc(EMIT_BUF_RATIO*cnt*sizeof(float));
-	mForce = (cfloat3*)malloc(EMIT_BUF_RATIO*cnt*sizeof(cfloat3));
-
-	//multi fluid
-
-	m_alpha = (float*)malloc(EMIT_BUF_RATIO*cnt*MAX_FLUIDNUM*sizeof(float));
-	m_alpha_pre = (float*)malloc(EMIT_BUF_RATIO*cnt*MAX_FLUIDNUM*sizeof(float));
-	m_pressure_modify = (float*)malloc(EMIT_BUF_RATIO*cnt*sizeof(float));
-	m_vel_phrel = (cfloat3*)malloc(EMIT_BUF_RATIO*cnt*MAX_FLUIDNUM*sizeof(cfloat3));
-
-	m_restMass = (float*)malloc(EMIT_BUF_RATIO*cnt*sizeof(float));
-	m_restDensity = (float*)malloc(EMIT_BUF_RATIO*cnt*sizeof(float));
-	m_visc = (float*)malloc(EMIT_BUF_RATIO*cnt*sizeof(float));
-
-	m_velxcor = (cfloat3*)malloc(EMIT_BUF_RATIO*cnt*sizeof(cfloat3));
-	m_alphagrad = (cfloat3*)malloc(EMIT_BUF_RATIO*cnt*MAX_FLUIDNUM*sizeof(cfloat3));
-
-	//Project U
-
-	MF_type = (int*)malloc(EMIT_BUF_RATIO*cnt*sizeof(int));
-	MF_tensor = (float*)malloc(EMIT_BUF_RATIO*cnt*sizeof(int)*9);
-
-	MF_id = (int*)malloc(EMIT_BUF_RATIO*cnt*sizeof(int));
-	MF_idTable = (int*)malloc(EMIT_BUF_RATIO*cnt*sizeof(int));
-	MF_pepsilon = (float*)malloc(EMIT_BUF_RATIO*cnt*sizeof(float));
-
-	//End Project U
 	printf("particle buffer %d\n", cnt);
 }
 
@@ -186,7 +114,8 @@ void FluidSystem::SetupDevice() {
 	FluidSetupCUDA(hostCarrier); //allocate buffers
 	FluidParamCUDA(hostCarrier); //some parameters
 
-	TransferToCUDA();		// Initial transfer
+	//TransferToCUDA();		// Initial transfer
+	TransferToCUDA(fbuf);
 
 }
 
@@ -195,8 +124,6 @@ void FluidSystem::BeforeFirstRun() {
 	InitialSortCUDA(0x0, 0x0, 0x0);
 	SortGridCUDA(0x0);
 	CountingSortFullCUDA_(0x0);
-	initSPH(m_restDensity, MF_type);
-
 
 	InitSolid(); //clear tensor buffer
 }
@@ -204,7 +131,6 @@ void FluidSystem::BeforeFirstRun() {
 
 
 //Adding Particles
-
 
 //void FluidSystem::setupSPHexample(){
 //	ParseXML_Bound("BoundInfo",1);
@@ -452,8 +378,6 @@ void FluidSystem::SetupSimpleSphCase(){
 //}
 
 
-
-
 //
 //void FluidSystem::RunSolid(){
 //	cTime start;
@@ -522,7 +446,7 @@ void FluidSystem::Run (int width, int height)
 	frameNo++;
 }
 
-extern bufList	fbuf;
+
 void FluidSystem::RunSimpleSPH() {
 
 	ClearTimer();
@@ -544,15 +468,8 @@ void FluidSystem::RunSimpleSPH() {
 	MfAdvanceCUDA(0, hostCarrier.dt, hostCarrier.simscale);
 	CheckTimer("advance");
 
-	TransferFromCUDA();	// return for rendering
+	
 	TransferFromCUDA(fbuf);
-
-	for (int i=0; i<pointNum; i++) {
-		if (MF_id[i]==1000)
-			mColor[i].Set(1, 0, 0, 0.9);
-		else
-			mColor[i].w = 0.5;
-	}
 }
 
 
@@ -725,7 +642,7 @@ void FluidSystem::ParseXML(){
 
 void FluidSystem::TransferToCUDA(bufList& fbuf) {
 	cudaMemcpy(fbuf.displayBuffer,displayBuffer,sizeof(displayPack)*pointNum, cudaMemcpyHostToDevice);
-	//cudaMemcpy(fbuf.calcBuffer, calculationBuffer, sizeof(calculationPack)*pointNum, cudaMemcpyHostToDevice);
+	cudaMemcpy(fbuf.calcBuffer, calculationBuffer, sizeof(calculationPack)*pointNum, cudaMemcpyHostToDevice);
 	//cudaMemcpy(fbuf.intmBuffer, intmBuffer, sizeof(IntermediatePack)*pointNum, cudaMemcpyHostToDevice);
 }
 

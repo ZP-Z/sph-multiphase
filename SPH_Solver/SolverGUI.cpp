@@ -560,7 +560,7 @@ void SolverGUI::MouseClick(int x,int y,int state,int button){
 			else
 				camera.zoomin = camera.zoomin * 0.8 - 0.2 * 50;
 			camera.fovy += camera.zoomin * 0.5;
-			camera.fovy = min(100, max(10, camera.fovy));
+			camera.fovy = fmin(100, fmax(10, camera.fovy));
 			camera.ProjectionMat();
 		}
 	}
@@ -575,7 +575,7 @@ void SolverGUI::drag(int dx,int dy){
 	}else if(dragging == DRAG_RIGHT){
 		camera.zoomin = camera.zoomin * 0.8 + 0.2 * dy;
 		camera.fovy += camera.zoomin * 0.5;
-		camera.fovy = min(100, max(10, camera.fovy));
+		camera.fovy = fmin(100, fmax(10, camera.fovy));
 		camera.ProjectionMat();
 	}else if(dragging == DRAG_MIDDLE){
 		float alpha = 0.4;

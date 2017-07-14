@@ -21,14 +21,17 @@ void FluidSystem::outputFile()
 	sprintf(dsttmp,"OutputData\\data_%04d.txt",frameNo);
 	fp = fopen(dsttmp,"w");
 	fprintf(fp,"%d\n", pointNum);
-	cfloat3* ppos = mPos;
-	for (int i = 0;i<pointNum;i++,ppos++){
-		if (mIsBound[i]!=1){
-			fprintf(fp,"%f %f %f ",mPos[i].x,mPos[i].y,mPos[i].z); //x,y,z
-			for(int k=0; k<MAX_FLUIDNUM; k++)
-				fprintf(fp, "%f ", m_alpha[i*MAX_FLUIDNUM+k]); //alpha1, alpha2, alpha3
-			fprintf(fp,"%f %f %d\n", m_restMass[i], m_restDensity[i],MF_type[i]); //mass, density, type
-		}
+	
+	for (int i = 0;i<pointNum;i++){
+
+		fprintf(fp,"%f %f %f ",displayBuffer[i].pos.x,
+			displayBuffer[i].pos.y,
+			displayBuffer[i].pos.z);
+
+		fprintf(fp,"%f %f %d\n",  calculationBuffer[i].mass, 
+			calculationBuffer[i].restdens,
+			displayBuffer[i].type);
+	
 	}
 	fclose(fp);
 	outputNo++;
@@ -280,110 +283,8 @@ void FluidSystem::CaptureVideo (int width, int height)
 
 void FluidSystem::saveParticle(std::string name)
 {
-	TransferFromCUDAForLoad();
-	FILE* fp;
-	int n = 0;
-	for (int i = 0;i<pointNum;i++)
-		if (mIsBound[i] == 0 && mPos[i].x>-500)
-			n++;
-	fp = fopen(name.c_str(),"w");
-	fprintf(fp,"%d\n",n);
-	cfloat3* ppos = mPos;
-	for (int i = 0;i<pointNum;i++,ppos++)
-	if (mIsBound[i] == 0 && mPos[i].x>-500)
-	{
-		fprintf(fp,"%f %f %f",ppos->x,ppos->y,ppos->z);
-		for (int j = 0;j<MAX_FLUIDNUM;j++)
-		{
-			fprintf(fp," %f",*(m_alpha+i*MAX_FLUIDNUM + j));
-			fprintf(fp," %f",*(m_alpha_pre+i*MAX_FLUIDNUM + j));
-		}
-		fprintf(fp," %f",m_restMass[i]);
-		fprintf(fp," %f",m_restDensity[i]);
-		fprintf(fp," %f",m_visc[i]);
-		fprintf(fp," %f %f %f",mVel[i].x, mVel[i].y, mVel[i].z);
-		fprintf(fp," %f %f %f",mVelEval[i].x, mVelEval[i].y, mVelEval[i].z);
-		fprintf(fp," %d",MF_type[i]);
-		if( MF_type[i]==1)
-			for(int k=0; k<9; k++){
-				fprintf(fp," %f",MF_tensor[i*9+k]);
-			}
-	}
-	fclose(fp);
-	//SetYan(SAVE_STAT,0);
 }
 
 int FluidSystem::loadParticle(std::string name)
-{
-	int n,p;
-	float f1,f2,f3;
-	FILE* fp;
-	fp = fopen(name.c_str(),"r");
-	fscanf(fp,"%d",&n);
-	cfloat3* ppos = mPos;
-	for (int i = 0;i<n;i++)
-	{
-		p = AddParticle(); // the index of the added particle
-		if (p!=-1)
-		{
-			fscanf(fp,"%f %f %f",&f1,&f2,&f3);
-			(ppos+p)->Set(f1,f2,f3);
-			for (int j = 0;j<MAX_FLUIDNUM;j++)
-			{
-				fscanf(fp,"%f",(m_alpha+p*MAX_FLUIDNUM + j));
-				fscanf(fp,"%f",(m_alpha_pre+p*MAX_FLUIDNUM + j));
-			}
-			if(sceneID==3){
-				for (int j = 0;j<MAX_FLUIDNUM;j++)
-				{
-					m_alpha[p*MAX_FLUIDNUM] = 0.15f;
-					m_alpha[p*MAX_FLUIDNUM+1] = 0.25f;
-					m_alpha[p*MAX_FLUIDNUM+2] = 0.4f;
-					m_alpha[p*MAX_FLUIDNUM+3] = 0.2f;
-					m_alpha_pre[p*MAX_FLUIDNUM] = 0.15f;
-					m_alpha_pre[p*MAX_FLUIDNUM+1] = 0.25f;
-					m_alpha_pre[p*MAX_FLUIDNUM+2] = 0.4f;
-					m_alpha_pre[p*MAX_FLUIDNUM+3] = 0.2f;
-				}
-			}
-			if(sceneID==5){
-				for (int j = 0;j<MAX_FLUIDNUM;j++)
-				{
-					m_alpha[p*MAX_FLUIDNUM] = 0.0f;
-					m_alpha[p*MAX_FLUIDNUM+1] = 0.0f;
-					m_alpha[p*MAX_FLUIDNUM+2] = 0.0f;
-					m_alpha[p*MAX_FLUIDNUM+3] = 1.0f;
-	//				m_alpha[p*MAX_FLUIDNUM+3] = 0.2f;
-	//				m_alpha[p*MAX_FLUIDNUM+4] = 0.2f;
-					m_alpha_pre[p*MAX_FLUIDNUM] = 0.0f;
-					m_alpha_pre[p*MAX_FLUIDNUM+1] = 0.0f;
-					m_alpha_pre[p*MAX_FLUIDNUM+2] = 0.0f;
-					m_alpha_pre[p*MAX_FLUIDNUM+3] = 1.0f;
-	//				m_alpha_pre[p*MAX_FLUIDNUM+3] = 0.2f;
-	//				m_alpha_pre[p*MAX_FLUIDNUM+4] = 0.2f;
-				}
-			}
-			fscanf(fp,"%f",m_restMass+p);
-			fscanf(fp,"%f",m_restDensity+p);
-			fscanf(fp,"%f",m_visc+p);
-			fscanf(fp," %f %f %f",&mVel[i].x, &mVel[i].y, &mVel[i].z);
-			fscanf(fp," %f %f %f",&mVelEval[i].x, &mVelEval[i].y, &mVelEval[i].z);
-			fscanf(fp,"%d",&MF_type[i]);
-
-			if(MF_type[i]==1){
-				for(int k=0; k<9; k++){
-					fscanf(fp,"%f",&MF_tensor[i*9+k]);
-				}
-			}
-			*(mClr+p) = COLORA( 1,1,1,1);
-		}
-	}
-	fclose(fp);
-	return n;
-}
-
-void FluidSystem::record ( int param, std::string name, cTime& start )
-{
-	//cTime stop;
-	//m_Param [ param ] = stop - start;
+{	
 }
