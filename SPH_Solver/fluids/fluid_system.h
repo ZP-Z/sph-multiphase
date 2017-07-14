@@ -9,7 +9,7 @@
 #include <math.h>
 
 #include "../common_header.h"
-#include "../CatToolBox.h"
+#include "CatToolBox.h"
 
 #define GRID_UCHAR			0xFF
 #define GRID_UNDEF			4294967295

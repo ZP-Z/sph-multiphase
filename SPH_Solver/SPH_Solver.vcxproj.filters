@@ -13,20 +13,20 @@
     <ClCompile Include="AddShape.cpp">
       <Filter>fluid</Filter>
     </ClCompile>
-    <ClCompile Include="glUtils.cpp">
-      <Filter>cat_paw</Filter>
-    </ClCompile>
-    <ClCompile Include="geometry.cpp">
-      <Filter>cat_paw</Filter>
-    </ClCompile>
-    <ClCompile Include="catXMLHelper.cpp">
-      <Filter>cat_paw</Filter>
-    </ClCompile>
     <ClCompile Include="SolverGUI.cpp">
       <Filter>GUI</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="catpaw\geometry.cpp">
+      <Filter>cat_paw</Filter>
+    </ClCompile>
+    <ClCompile Include="catpaw\glUtils.cpp">
+      <Filter>cat_paw</Filter>
+    </ClCompile>
+    <ClCompile Include="catpaw\catXMLHelper.cpp">
+      <Filter>cat_paw</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -39,29 +39,26 @@
     <ClInclude Include="fluids\svd3_cuda.h">
       <Filter>fluid\CudaCode</Filter>
     </ClInclude>
-    <ClInclude Include="glUtils.h">
-      <Filter>cat_paw</Filter>
-    </ClInclude>
-    <ClInclude Include="geometry.h">
-      <Filter>cat_paw</Filter>
-    </ClInclude>
-    <ClInclude Include="CatTimer.h">
-      <Filter>cat_paw</Filter>
-    </ClInclude>
-    <ClInclude Include="CatToolBox.h">
-      <Filter>cat_paw</Filter>
-    </ClInclude>
-    <ClInclude Include="catXMLhelper.h">
-      <Filter>cat_paw</Filter>
-    </ClInclude>
     <ClInclude Include="common_header.h">
       <Filter>fluid</Filter>
     </ClInclude>
     <ClInclude Include="SolverGUI.h">
       <Filter>GUI</Filter>
     </ClInclude>
-    <ClInclude Include="tinyxml2.h">
-      <Filter>GUI</Filter>
+    <ClInclude Include="catpaw\geometry.h">
+      <Filter>cat_paw</Filter>
+    </ClInclude>
+    <ClInclude Include="catpaw\glUtils.h">
+      <Filter>cat_paw</Filter>
+    </ClInclude>
+    <ClInclude Include="catpaw\CatTimer.h">
+      <Filter>cat_paw</Filter>
+    </ClInclude>
+    <ClInclude Include="catpaw\CatToolBox.h">
+      <Filter>cat_paw</Filter>
+    </ClInclude>
+    <ClInclude Include="catpaw\catXMLhelper.h">
+      <Filter>cat_paw</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

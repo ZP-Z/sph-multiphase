@@ -8,7 +8,7 @@
 #include <math.h>
 
 #include "../common_header.h"
-#include "../geometry.h"
+#include "geometry.h"
 	
 
 	// Temporary sort buffer offsets
