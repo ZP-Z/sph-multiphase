@@ -1,0 +1,106 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="fluids\fluid_system.cpp">
+      <Filter>fluid</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>fluid</Filter>
+    </ClCompile>
+    <ClCompile Include="FluidIOUtility.cpp">
+      <Filter>fluid</Filter>
+    </ClCompile>
+    <ClCompile Include="MemTransfer.cpp">
+      <Filter>fluid</Filter>
+    </ClCompile>
+    <ClCompile Include="AddShape.cpp">
+      <Filter>fluid</Filter>
+    </ClCompile>
+    <ClCompile Include="SolverGUI.cpp">
+      <Filter>fluid</Filter>
+    </ClCompile>
+    <ClCompile Include="glUtils.cpp">
+      <Filter>cat_paw</Filter>
+    </ClCompile>
+    <ClCompile Include="geometry.cpp">
+      <Filter>cat_paw</Filter>
+    </ClCompile>
+    <ClCompile Include="catXMLHelper.cpp">
+      <Filter>cat_paw</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="fluids\fluid_system.h">
+      <Filter>fluid</Filter>
+    </ClInclude>
+    <ClInclude Include="fluids\fluidMath.cuh">
+      <Filter>fluid\CudaCode</Filter>
+    </ClInclude>
+    <ClInclude Include="SolverGUI.h">
+      <Filter>fluid</Filter>
+    </ClInclude>
+    <ClInclude Include="fluids\svd3_cuda.h">
+      <Filter>fluid\CudaCode</Filter>
+    </ClInclude>
+    <ClInclude Include="glUtils.h">
+      <Filter>cat_paw</Filter>
+    </ClInclude>
+    <ClInclude Include="geometry.h">
+      <Filter>cat_paw</Filter>
+    </ClInclude>
+    <ClInclude Include="CatTimer.h">
+      <Filter>cat_paw</Filter>
+    </ClInclude>
+    <ClInclude Include="CatToolBox.h">
+      <Filter>cat_paw</Filter>
+    </ClInclude>
+    <ClInclude Include="catXMLhelper.h">
+      <Filter>cat_paw</Filter>
+    </ClInclude>
+    <ClInclude Include="tinyxml2.h">
+      <Filter>fluid</Filter>
+    </ClInclude>
+    <ClInclude Include="common_header.h">
+      <Filter>fluid</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="fluids\fluid_system_kern.cuh">
+      <Filter>fluid\CudaCode</Filter>
+    </None>
+    <None Include="fluids\fluid_system_host.cuh">
+      <Filter>fluid\CudaCode</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="fluid">
+      <UniqueIdentifier>{0fa424a0-0014-4a01-b7dc-2da1c1b3282c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="fluid\CudaCode">
+      <UniqueIdentifier>{022dbe31-039f-4ced-8632-fbf1f252de5e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="cat_paw">
+      <UniqueIdentifier>{28f444cc-2717-476d-8a6b-ffa1b611d127}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="fluids\fluid_system_host.cu">
+      <Filter>fluid\CudaCode</Filter>
+    </CudaCompile>
+    <CudaCompile Include="fluids\fluid_system_kern.cu">
+      <Filter>fluid\CudaCode</Filter>
+    </CudaCompile>
+    <CudaCompile Include="MpmSolver.cu">
+      <Filter>fluid\CudaCode</Filter>
+    </CudaCompile>
+    <CudaCompile Include="fluidMath.cu">
+      <Filter>fluid\CudaCode</Filter>
+    </CudaCompile>
+    <CudaCompile Include="multiphase.cu">
+      <Filter>fluid\CudaCode</Filter>
+    </CudaCompile>
+    <CudaCompile Include="sph_solid.cu">
+      <Filter>fluid\CudaCode</Filter>
+    </CudaCompile>
+  </ItemGroup>
+</Project>

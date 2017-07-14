@@ -1,0 +1,84 @@
+<Fluid>
+	<IntStiff>		1.5	</IntStiff>
+	<ExtStiff>	0.5	</ExtStiff>
+	<AccelLimit>	150.0		</AccelLimit>
+	<VelLimit>		1		</VelLimit>
+	<Gravity>	0,-9.8,0		</Gravity>
+	<VolMin> -60, -20, -60 </VolMin>
+	<VolMax> 60,  200,  60 </VolMax>
+</Fluid>
+
+<MultiScene id="2">
+	<Num> 50000 </Num>
+	<SimScale>		0.005		</SimScale>
+	<Name>		Test 	</Name>
+	<DT>			0.0005 </DT>
+	<Radius> 0.01 </Radius>
+	<SmoothRadius> 0.015 </SmoothRadius>
+	<Viscosity>	 1.0		</Viscosity>
+	<Mass> 0.00010543 </Mass>
+	<RestDensity> 600 </RestDensity>
+	<IntStiff>		0.03	 </IntStiff>
+	<ExtStiff>	50000.0	</ExtStiff>
+	<ExtDamp>	100.0		</ExtDamp>
+	<ScaleP>	1	</ScaleP>
+	<ScaleDis>	0.9	</ScaleDis>
+	<PlaneGravDir>	0,-9.8,0	</PlaneGravDir>
+	<FluidCount> 3 </FluidCount>
+	<!--VolMin0>		 30, 2, 30	</VolMin0>
+	<VolMax0>		 55, 20,  55	</VolMax0-->
+	<SoftBoundMin>	-35, 0, -35 </SoftBoundMin>
+	<SoftBoundMax>	 35, 180, 35 </SoftBoundMax>
+	
+    <VolMin0>		 -10, 5, -10	</VolMin0>
+	<VolMax0>		 10, 50,  10	</VolMax0>
+
+	<VolMin1>		 -20, 12, -10	</VolMin1>
+	<VolMax1>		  -2, 32,  10	</VolMax1>
+	<VolMin2>		-135, 2,	-15	</VolMin2>
+	<VolMax2>		-35,32,	-15	</VolMax2>
+	<VolMin3>		45, 1,	 15	</VolMin3>
+	<VolMax3>		-25, 25, 35	</VolMax3>
+	<VolMin4>		25, 1,	-30	</VolMin4>
+	<VolMax4>		-45,25,	-15	</VolMax4>
+	
+	<FSA>  1 </FSA> 
+	<BoundViscFactor> -1 </BoundViscFactor>
+	<FluidVConstraint> 1.5 </FluidVConstraint>
+	
+	<MassRatio>    1.,    1.,   1.  </MassRatio>
+	<DensityRatio> 1.,    1.,   1.  </DensityRatio>
+	<ViscRatio>    1,   1,   1   </ViscRatio>
+	
+	<SurfaceTensionK> 0 </SurfaceTensionK>
+	<SurfaceTensionFluidC> 0 </SurfaceTensionFluidC>
+	<FBlending> 1 </FBlending>
+
+	<solid_coE>  50000 </solid_coE>
+	<solid_coV>  0.3 </solid_coV>
+	<solid_coA>  2 </solid_coA>
+	<solid_coB>  1 </solid_coB>
+	<solid_FSA>  0 </solid_FSA> 
+	<solid_FSB>  0  </solid_FSB>
+	<SFlipControl> -0.0 </SFlipControl>
+
+	<!-- drucker prager -->
+	<DP_Phi>  30  </DP_Phi>
+	<DP_Psi>  9  </DP_Psi>
+	<DP_cohesion> 1.0 </DP_cohesion>
+	<BoundXZdamp> 0.3 </BoundXZdamp>
+	<Sleepvel> 0.00000001 </Sleepvel>
+</MultiScene>
+
+<BoundInfo id="1">
+	<Viscosity>	207		</Viscosity>
+	<RestDensity>	600.0		</RestDensity>
+	<Mass>		0.00020543	</Mass>
+	<BoundStiff>	5000	</BoundStiff>
+</BoundInfo>
+
+
+
+
+
+
