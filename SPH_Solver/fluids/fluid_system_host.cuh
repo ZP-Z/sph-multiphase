@@ -85,8 +85,8 @@
 	void CopyBoundToCUDA(int* isbound);
 	void CopyBoundFromCUDA(int* isbound);
 
-	void CopyToCUDA_Uproject(int* mftype, float* tensorbuffer,int* bornid);
-	void CopyFromCUDA_Uproject(int* mftype, int* idtable, float* pepsilon, float* stensor, int mode);
+	void CopyToCUDA_Uproject(int* mftype, float* tensorbuffer,int* bornid, displayPack* displayBuffer);
+	void CopyFromCUDA_Uproject(int* mftype, int* idtable, float* pepsilon, float* stensor, int mode, displayPack* displayBuffer);
 
 	//new sort
 	void InitialSortCUDA( uint* gcell, uint* ccell, int* gcnt );

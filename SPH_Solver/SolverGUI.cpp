@@ -780,6 +780,16 @@ void SolverGUI::CreateParticleSystem() {
 		1,0,0,1,
 		1,0,1,1,
 		0,0,1,1};
+	displayPack tmpbuf[]={
+		{ cfloat3(-.5,-.5,.5) , cfloat4(0,0,1,1)},
+		{cfloat3(-.5,-.5,.5) , cfloat4(0,0,1,1)},
+		{cfloat3(-.5,-.5,.5) , cfloat4(0,0,1,1)},
+		{cfloat3(-.5,-.5,.5) , cfloat4(0,0,1,1)},
+		{cfloat3(-.5,-.5,.5) , cfloat4(0,0,1,1)},
+		{cfloat3(-.5,-.5,.5) , cfloat4(0,0,1,1)},
+		{cfloat3(-.5,-.5,.5) , cfloat4(0,0,1,1)},
+		{cfloat3(-.5,-.5,.5) , cfloat4(0,0,1,1)}
+	};
 
 	ShaderIds[0] = glCreateProgram();
 	ExitOnGLError("ERROR: Could not create the shader program");
@@ -815,14 +825,18 @@ void SolverGUI::CreateParticleSystem() {
 	maxPointNum = 20000; //100,000 needed for SPH
 	pointNum = 8;
 	glBindBuffer(GL_ARRAY_BUFFER, BufferIds[1]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float)*3*maxPointNum, NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER,0,sizeof(float)*3*pointNum,pos);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
-	
-	glBindBuffer(GL_ARRAY_BUFFER, BufferIds[2]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float)*4*maxPointNum, NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(color), color);
-	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, 0);
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(cfloat3)*maxPointNum, NULL, GL_STATIC_DRAW);
+	//glBufferSubData(GL_ARRAY_BUFFER,0,sizeof(cfloat3)*pointNum,pos);
+	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(displayPack)*maxPointNum, NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0 ,sizeof(displayPack)*pointNum, tmpbuf);
+	glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,sizeof(displayPack),0);
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(displayPack), (void*)sizeof(cfloat3));
+
+	//glBindBuffer(GL_ARRAY_BUFFER, BufferIds[2]);
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(float)*4*maxPointNum, NULL, GL_STATIC_DRAW);
+	//glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(color), color);
+	//glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, 0);
 	
 	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, BufferIds[2]);
 	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(INDICES), INDICES, GL_STATIC_DRAW);
@@ -886,12 +900,14 @@ void SolverGUI::DrawParticleSystem(){
 	pointNum = psys->pointNum;
 	//Update Particle Data
 	glBindBuffer(GL_ARRAY_BUFFER, BufferIds[1]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float)*3*maxPointNum, NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float)*3*pointNum, psys->mPos);
-	
-	glBindBuffer(GL_ARRAY_BUFFER, BufferIds[2]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float)*4*maxPointNum, NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float)*4*pointNum, psys->mColor);
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(float)*3*maxPointNum, NULL, GL_STATIC_DRAW);
+	//glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float)*3*pointNum, psys->mPos);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(displayPack)*maxPointNum, NULL,GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(displayPack)*pointNum, psys->displayBuffer);
+
+	//glBindBuffer(GL_ARRAY_BUFFER, BufferIds[2]);
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(float)*4*maxPointNum, NULL, GL_STATIC_DRAW);
+	//glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float)*4*pointNum, psys->mColor);
 	
 	glDrawArrays(GL_POINTS, 0, pointNum);
 	ExitOnGLError("ERROR: Could not draw the cube");

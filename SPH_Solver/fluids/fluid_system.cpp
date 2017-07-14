@@ -102,6 +102,9 @@ void FluidSystem::AllocateParticles(int cnt)
 {
 	int nump = 0;		// number to copy from previous data
 
+	displayBuffer = new displayPack[EMIT_BUF_RATIO * cnt];
+	calculationBuffer = new calculationPack[EMIT_BUF_RATIO*cnt];
+
 	mPos = (cfloat3*)malloc(EMIT_BUF_RATIO*cnt*sizeof(cfloat3));
 	mClr = (DWORD*)malloc(EMIT_BUF_RATIO*cnt*sizeof(DWORD));
 	mColor = new cfloat4[EMIT_BUF_RATIO*cnt];
@@ -519,6 +522,7 @@ void FluidSystem::Run (int width, int height)
 	frameNo++;
 }
 
+extern bufList	fbuf;
 void FluidSystem::RunSimpleSPH() {
 
 	ClearTimer();
@@ -541,6 +545,7 @@ void FluidSystem::RunSimpleSPH() {
 	CheckTimer("advance");
 
 	TransferFromCUDA();	// return for rendering
+	TransferFromCUDA(fbuf);
 
 	for (int i=0; i<pointNum; i++) {
 		if (MF_id[i]==1000)
@@ -716,4 +721,16 @@ void FluidSystem::ParseXML(){
 	hostCarrier.extdamp = XMLGetFloat("ExtDamp");
 	hostCarrier.softminx = XMLGetFloat3("SoftBoundMin");
 	hostCarrier.softmaxx = XMLGetFloat3("SoftBoundMax");
+}
+
+void FluidSystem::TransferToCUDA(bufList& fbuf) {
+	cudaMemcpy(fbuf.displayBuffer,displayBuffer,sizeof(displayPack)*pointNum, cudaMemcpyHostToDevice);
+	//cudaMemcpy(fbuf.calcBuffer, calculationBuffer, sizeof(calculationPack)*pointNum, cudaMemcpyHostToDevice);
+	//cudaMemcpy(fbuf.intmBuffer, intmBuffer, sizeof(IntermediatePack)*pointNum, cudaMemcpyHostToDevice);
+}
+
+void FluidSystem::TransferFromCUDA(bufList& fbuf) {
+	cudaMemcpy( displayBuffer, fbuf.displayBuffer, sizeof(displayPack)*pointNum, cudaMemcpyDeviceToHost);
+	//cudaMemcpy( calculationBuffer, fbuf.calcBuffer, sizeof(calculationPack)*pointNum, cudaMemcpyDeviceToHost);
+	//cudaMemcpy(intmBuffer, fbuf.intmBuffer, sizeof(IntermediatePack)*pointNum, cudaMemcpyDeviceToHost);
 }

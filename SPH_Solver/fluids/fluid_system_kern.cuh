@@ -1,89 +1,15 @@
 
 #ifndef DEF_KERN_CUDA
 	#define DEF_KERN_CUDA
-	#include "..\\fluids\\multifluid_def.h"
 
-	#include <stdio.h>
-	#include <math.h>
-	#include <vector_types.h>
+#include "..\\fluids\\multifluid_def.h"
+
+#include <stdio.h>
+#include <math.h>
 
 #include "fluid_system.h"
 #include "../geometry.h"
-
-	typedef unsigned int		uint;
-	typedef unsigned short int	ushort;
-
-	// Particle & Grid Buffers
-	struct bufList {
-		//Particle properties
-		cfloat3*			mpos;
-		cfloat3*			mvel;
-		cfloat3*			mveleval;
-		cfloat3*			mforce;
-		float*			mpress;
-		float*			last_mpress;
-		float*			mdensity;		
-		uint*			mgcell;
-		uint*			mgndx;
-		uint*			mclr;			// 4 byte color
-		float4*			mColor;
-		int*			misbound;
-		cfloat3*			accel; //leapfrog integration
-		//End particle properties
-
-		//multi fluid
-		float*			mf_alpha;				// MAX_FLUIDNUM * 4 bytes for each particle
-		float*			mf_alpha_pre;			// MAX_FLUIDNUM * 4 bytes for each particle
-		float*			mf_pressure_modify;	//  4 bytes for each particle
-		cfloat3*			mf_vel_phrel;			// MAX_FLUIDNUM * 12 bytes for each particle
-		float*			mf_restmass;
-		float*			mf_restdensity;
-		float*			mf_visc;
-		cfloat3*			mf_velxcor;
-		cfloat3*			mf_alphagrad;			// MAX_FLUIDNUM * 12 bytes for each particle
-		
-		int*            MFtype;
-		int*			MFid;					//particle id
-		int*			MFidTable;				//id table
-		float*			MFtensor;				//sigma_s
-		float*			MFtemptensor;			//sigma
-		float*			MFRtensor;				//Artificial Tensor
-		float*			MFvelgrad;				//velocity grad
-		float*			MFpepsilon;
-
-		int*			mf_multiFlag;			// basically a variously used buffer
-		//End multi fluid
-
-		uint*			mcluster;
-
-		//For sorting
-		char*			msortbuf;
-		uint*			mgrid;	
-		int*			mgridcnt;
-		int*			mgridoff;
-		int*			mgridactive;
-		//new sort
-		uint*			midsort;
-		//End sorting
-
-        //Mpm Grid
-        //Split Grid For Phases!
-        float*          mpmMass;
-        cfloat3*         mpmVel;
-        cfloat3*         mpmForce;
-        float*          mpmTensor;
-        
-        float*          mpmAlpha;
-
-        uint*           mpmGid;    //mpmSize
-        uint*           mpmIdSort; //mpmSize
-        int*            mpmGridVList; //mpmSize
-        int*            mpmGridCnt;//gridSize
-        int*            mpmGridOff; //gridSize
-        
-        cfloat3*         mpmPos;
-
-	};// End particle&grid buffers
+	
 
 	// Temporary sort buffer offsets
 	#define BUF_POS			0
@@ -114,6 +40,7 @@
 	#define BUF_TEMPTENSOR  (BUF_TENSOR + sizeof(float)*9)
 	#define BUF_RTENSOR		(BUF_TEMPTENSOR + sizeof(float)*9)
 	#define BUF_BORNID      (BUF_RTENSOR + sizeof(float)*9)
+#define BUF_DISPLAYBUF (BUF_BORNID + sizeof(int))
 
 	// Fluid Parameters (stored on both host and device)
 	struct FluidParams {

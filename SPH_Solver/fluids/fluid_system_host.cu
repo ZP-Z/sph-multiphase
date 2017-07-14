@@ -6,38 +6,18 @@
 #include <assert.h>
 
 #include <conio.h>
-//#include <cutil.h>					// cutil32.lib
-//#include <cutil_math.h>				// cutil32.lib
 
-//#include <GL/glut.h>
-//#include <cuda_gl_interop.h>
 
 #include "fluid_system_host.cuh"		
 #include "fluid_system_kern.cuh"
-//#include "radixsort.cu"						// Build in RadixSort
+
 #include "thrust\device_vector.h"	//thrust libs
 #include "thrust\sort.h" 
 
 
 FluidParams		fcuda;
-//extern ParamCarrier hostCarrier;
 bufList			fbuf;
 cudaError_t error;
-
-__device__ uint			gridActive;
-__device__ int			flagNumFT;  //for transfer
-__device__ int			pNumFT;		//for transfer
-
-#define BLOCK_SIZE 256
-#define LOCAL_PMAX		896
-#define NUM_CELL		27
-#define LAST_CELL		26
-#define CENTER_CELL		13
-
-float**			g_scanBlockSums;
-int**			g_scanBlockSumsInt;
-unsigned int	g_numEltsAllocated = 0;
-unsigned int	g_numLevelsAllocated = 0;
 
 void cudaExit (int argc, char **argv)
 {
@@ -167,7 +147,7 @@ void FluidSetupCUDA(ParamCarrier& params){
 	printf ( "  Pnts: %d, t:%dx%d=%d, Size:%d\n", fcuda.pnum, fcuda.numBlocks, fcuda.numThreads, fcuda.numBlocks*fcuda.numThreads, fcuda.szPnts);
 	printf ( "  Grid: %d, t:%dx%d=%d, bufGrid:%d, Res: %dx%dx%d\n", fcuda.gridTotal, fcuda.gridBlocks, fcuda.gridThreads, fcuda.gridBlocks*fcuda.gridThreads, fcuda.szGrid, (int) fcuda.gridRes.x, (int) fcuda.gridRes.y, (int) fcuda.gridRes.z );
 	*/
-
+	
 	CUDA_SAFE_CALL(cudaMalloc((void**)&fbuf.mpos, EMIT_BUF_RATIO*fcuda.szPnts*sizeof(float)*3));
 	CUDA_SAFE_CALL(cudaMalloc((void**)&fbuf.mvel, EMIT_BUF_RATIO*fcuda.szPnts*sizeof(float)*3));
 	CUDA_SAFE_CALL(cudaMalloc((void**)&fbuf.mveleval, EMIT_BUF_RATIO*fcuda.szPnts*sizeof(float)*3));
@@ -180,7 +160,10 @@ void FluidSetupCUDA(ParamCarrier& params){
 	CUDA_SAFE_CALL(cudaMalloc((void**)&fbuf.mclr, EMIT_BUF_RATIO*fcuda.szPnts*sizeof(uint)));
 	//CUDA_SAFE_CALL ( cudaMalloc ( (void**) &fbuf.mColor,    EMIT_BUF_RATIO*fcuda.szPnts*sizeof(float4)));
 
+	cudaMalloc(&fbuf.displayBuffer, EMIT_BUF_RATIO * fcuda.szPnts * sizeof(displayPack));
+	
 	int temp_size = EMIT_BUF_RATIO*(4*(sizeof(float)*3) + 2*sizeof(float) + 3*sizeof(uint));
+	temp_size += sizeof(displayPack);
 
 	CUDA_SAFE_CALL(cudaMalloc((void**)&fbuf.misbound, EMIT_BUF_RATIO*fcuda.szPnts*sizeof(int)));
 	temp_size += EMIT_BUF_RATIO*sizeof(int);
@@ -526,12 +509,13 @@ void CopyBoundToCUDA (int* isbound )
 	CUDA_SAFE_CALL( cudaMemcpy ( fbuf.misbound,	isbound,		numPoints*sizeof(int), cudaMemcpyHostToDevice ) );
 	cudaThreadSynchronize ();	
 }
-void CopyToCUDA_Uproject(int* mftype, float* tensorbuffer, int* bornid){
+void CopyToCUDA_Uproject(int* mftype, float* tensorbuffer, int* bornid,displayPack* displayBuffer){
 	int numPoints = fcuda.pnum;
 	CUDA_SAFE_CALL( cudaMemcpy( fbuf.MFtype, mftype, numPoints*sizeof(int), cudaMemcpyHostToDevice));
 	CUDA_SAFE_CALL( cudaMemcpy( fbuf.MFtensor, tensorbuffer, numPoints*sizeof(float)*9, cudaMemcpyHostToDevice));
 	CUDA_SAFE_CALL( cudaMemcpy( fbuf.MFtemptensor, tensorbuffer, numPoints*sizeof(float)*9, cudaMemcpyHostToDevice));
 	CUDA_SAFE_CALL( cudaMemcpy( fbuf.MFid, bornid, numPoints*sizeof(int), cudaMemcpyHostToDevice));
+	cudaMemcpy(fbuf.displayBuffer, displayBuffer, numPoints*sizeof(displayPack), cudaMemcpyHostToDevice);
 	cudaThreadSynchronize ();
 }
 
@@ -580,10 +564,11 @@ void CopyBoundFromCUDA (int* isbound )
 	if ( isbound != 0x0 ) CUDA_SAFE_CALL( cudaMemcpy ( isbound,	fbuf.misbound,		numPoints*sizeof(int),  cudaMemcpyDeviceToHost ) );
 	cudaThreadSynchronize ();	
 }
-void CopyFromCUDA_Uproject(int* mftype, int* idtable, float* pepsilon, float* stensor, int mode){
+void CopyFromCUDA_Uproject(int* mftype, int* idtable, float* pepsilon, float* stensor, int mode, displayPack* displayBuffer){
 	int numPoints = fcuda.pnum;
 	CUDA_SAFE_CALL( cudaMemcpy( mftype, fbuf.MFtype, numPoints*sizeof(int), cudaMemcpyDeviceToHost));
 	CUDA_SAFE_CALL( cudaMemcpy( idtable, fbuf.MFid, numPoints*sizeof(int), cudaMemcpyDeviceToHost));
+	//cudaMemcpy(displayBuffer, fbuf.displayBuffer, numPoints*sizeof(displayPack), cudaMemcpyDeviceToHost);
 	//CUDA_SAFE_CALL( cudaMemcpy( pepsilon, fbuf.MFpepsilon, numPoints*sizeof(float), cudaMemcpyDeviceToHost));
 	
 	if( mode==2) //to save particles
@@ -725,6 +710,8 @@ void CountingSortFullCUDA_( uint* ggrid )
 	cudaMemcpy ( fbuf.msortbuf + n*BUF_TEMPTENSOR,      fbuf.MFtemptensor,		n*sizeof(float)*9,				cudaMemcpyDeviceToDevice );	
 	cudaMemcpy ( fbuf.msortbuf + n*BUF_RTENSOR,			fbuf.MFRtensor,			n*sizeof(float)*9,				cudaMemcpyDeviceToDevice );
 	cudaMemcpy ( fbuf.msortbuf + n*BUF_BORNID,			fbuf.MFid,				n*sizeof(int),					cudaMemcpyDeviceToDevice );
+
+	cudaMemcpy ( fbuf.msortbuf + n*BUF_DISPLAYBUF, fbuf.displayBuffer, n*sizeof(displayPack), cudaMemcpyDeviceToDevice);
 
 	// Counting Sort - pass one, determine grid counts
 	cudaMemset ( fbuf.mgrid,	GRID_UCHAR,	fcuda.pnum * sizeof(int) );

@@ -33,7 +33,7 @@ __device__ void findNearest ( int i, float& mindis, int cell, bufList buf )
 {			
 	cfloat3 dist;
 	float dsq;
-	cfloat3 p = buf.mpos[i];
+	cfloat3 p = buf.displayBuffer[i].pos;
 
 	register float d2 = simData.psimscale * simData.psimscale;
 	register float r2 = simData.r2/d2;
@@ -49,7 +49,7 @@ __device__ void findNearest ( int i, float& mindis, int cell, bufList buf )
 		if (buf.misbound[j] == 0)
 		{
 			j = buf.mgrid[cndx];
-			dist = p - buf.mpos[ buf.mgrid[cndx] ];
+			dist = p - buf.displayBuffer[ buf.mgrid[cndx] ].pos;
 			dsq = dot(dist,dist);
 
 			if ( dsq < r2 && dsq > 0.0 && dsq*d2<mindis) 
@@ -80,10 +80,10 @@ __global__ void InitialSort ( bufList buf, int pnum )
 	register cfloat3		gcf;
 	register cint3		gc;
 
-	gcf = (buf.mpos[i] - gridMin) * gridDelta; 
+	gcf = (buf.displayBuffer[i].pos - gridMin) * gridDelta; 
 	gc = cint3( int(gcf.x), int(gcf.y), int(gcf.z) );
 	/*if(buf.MFid[i]==10000){
-		printf("%f %f %f %f %f %f\n",buf.mpos[i].x,buf.mpos[i].y,buf.mpos[i].z,
+		printf("%f %f %f %f %f %f\n",buf.displayBuffer[i].pos.x,buf.displayBuffer[i].pos.y,buf.displayBuffer[i].pos.z,
 			gridMin.x,gridMin.y,gridMin.z);
 		printf("gc %d %d %d\n",gc.x,gc.y,gc.z);
 	}*/
@@ -92,7 +92,7 @@ __global__ void InitialSort ( bufList buf, int pnum )
 		buf.mgcell[i] = gs;											// Grid cell insert.
 		buf.midsort[i] = i;
 //		buf.mgndx[i] = atomicAdd ( &buf.mgridcnt[ gs ], 1 );		// Grid counts.
-//		gcf = (-cfloat3(poff,poff,poff) + buf.mpos[i] - gridMin) * gridDelta;
+//		gcf = (-cfloat3(poff,poff,poff) + buf.displayBuffer[i].pos - gridMin) * gridDelta;
 //		gc = make_int3( int(gcf.x), int(gcf.y), int(gcf.z) );
 //		gs = ( gc.y * gridRes.z + gc.z)*gridRes.x + gc.x;
 		//buf.mcluster[i] = gs;				-- make sure it is allocated!
@@ -154,7 +154,7 @@ __global__ void CountingSortFull_ ( bufList buf, int pnum )
 
 	
 	if ( cell != GRID_UNDEF ) {
-		buf.mgrid[ sort_ndx ] = sort_ndx;			// full sort, grid indexing becomes identity
+		buf.mgrid[ sort_ndx ] = sort_ndx;		
 		char* bpos = buf.msortbuf + i*sizeof(cfloat3);
 		buf.mpos[ sort_ndx ] =		*(cfloat3*) (bpos);
 		buf.mvel[ sort_ndx ] =		*(cfloat3*) (bpos + pnum*BUF_VEL );
@@ -193,6 +193,7 @@ __global__ void CountingSortFull_ ( bufList buf, int pnum )
 		}
 		buf.MFid[sort_ndx] = *(int*)(buf.msortbuf + pnum*BUF_BORNID + i*sizeof(int));
 		buf.MFidTable[ buf.MFid[sort_ndx]] = sort_ndx;
+		buf.displayBuffer[sort_ndx] = *(displayPack*)(buf.msortbuf+pnum*BUF_DISPLAYBUF+i*sizeof(displayPack));
 	}
 	else{
 		buf.mgcell[sort_ndx] = GRID_UNDEF;
@@ -208,12 +209,12 @@ __global__ void mfFindNearest (bufList buf,int pnum)
 	
 	// Get search cell
 	int nadj = (1*simData.gridRes.z + 1)*simData.gridRes.x + 1;
-	uint gc = buf.mgcell[ i ];
+	uint gc = buf.mgcell[i];
 	if ( gc == GRID_UNDEF ) return;
 	gc -= nadj;
 	
 	// Sum Pressures
-	cfloat3 pos = buf.mpos[ i ];
+	cfloat3 pos = buf.displayBuffer[i].pos;
 	float mindis = 65535;
 
 	if (buf.misbound[i]==1) //boundary particles
@@ -232,7 +233,7 @@ __global__ void mfFindNearest (bufList buf,int pnum)
 
 __device__ void contributeDensity_boundary(uint i, float& res, uint cell, bufList buf) {
 	cfloat3 dist;
-	cfloat3 p = buf.mpos[i];
+	cfloat3 p = buf.displayBuffer[i].pos;
 	float dsq, c;
 	float massj;
 	register float d2 = simData.psimscale * simData.psimscale;
@@ -251,7 +252,7 @@ __device__ void contributeDensity_boundary(uint i, float& res, uint cell, bufLis
 		if ( buf.misbound[j] != 1 )
 			continue;
 
-		dist = p - buf.mpos[j];
+		dist = p - buf.displayBuffer[j].pos;
 
 		dsq = (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z);
 		if (dsq < r2 && dsq > 0.0) {
@@ -264,7 +265,7 @@ __device__ void contributeDensity_boundary(uint i, float& res, uint cell, bufLis
 
 __device__ void contributeDensity (uint i, float& res, uint cell, bufList buf){
 	cfloat3 dist;
-	cfloat3 p = buf.mpos[i];
+	cfloat3 p = buf.displayBuffer[i].pos;
 	float dsq, c;
 	float massj;
 	register float d2 = simData.psimscale * simData.psimscale;
@@ -287,7 +288,7 @@ __device__ void contributeDensity (uint i, float& res, uint cell, bufList buf){
 		//else
 		//	massj = buf.mf_restdensity[i] * buf.mdensity[j] * simData.fsa; // fluid density * boundary volume
 
-		dist = p - buf.mpos[j];
+		dist = p - buf.displayBuffer[j].pos;
 
 		dsq = (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z);
 		if ( dsq < r2 && dsq > 0.0) {
@@ -336,7 +337,7 @@ __global__ void ComputeDensityPressure(bufList buf,int pnum){
 
 	// Get search cell
 	int nadj = (1*simData.gridRes.z + 1)*simData.gridRes.x + 1;
-	uint gc = buf.mgcell[ i ];
+	uint gc = buf.mgcell[i];
 	if ( gc == GRID_UNDEF ) return;						// particle out-of-range
 	gc -= nadj;
 
@@ -365,8 +366,8 @@ __global__ void ComputeDensityPressure(bufList buf,int pnum){
 	
 	buf.mdensity[i] = 1/sum;
 
-	//buf.mpress[ i ] = ( sum - dens ) * simData.pintstiff;
-	//buf.mpress[ i ] = (pow( sum/dens,7.0f )-1) * simData.pintstiff;
+	//buf.mpress[i] = ( sum - dens ) * simData.pintstiff;
+	//buf.mpress[i] = (pow( sum/dens,7.0f )-1) * simData.pintstiff;
     buf.mpress[i] = 2.5 * dens * (pow(sum / dens, 7.0f) - 1);
 
     if (buf.mpress[i]<0)
@@ -409,7 +410,7 @@ __device__ cfloat3 contributeForce_new(int i, int muli, cfloat3 ipos, cfloat3 iv
 		//if (buf.misbound[j]==1)
 		//    continue;
 
-		dist = (ipos - buf.mpos[j]);		
+		dist = (ipos - buf.displayBuffer[j].pos);		
 		dsq = (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z);
 		dist *= simData.psimscale;
 
@@ -470,15 +471,15 @@ __global__ void ComputeForce (bufList buf, int pnum){
 
 	// Get search cell
 	int nadj = (1*simData.gridRes.z + 1)*simData.gridRes.x + 1;
-	uint gc = buf.mgcell[ i ];
+	uint gc = buf.mgcell[i];
 	if ( gc == GRID_UNDEF ) return;						// particle out-of-range
 	gc -= nadj;
 
 	register uint muloffseti = i * MAX_FLUIDNUM;
-	register cfloat3 ipos = buf.mpos[ i ];
-	register cfloat3 iveleval = buf.mveleval[ i ];
-	register float ipress = buf.mpress[ i ];
-	register float idens = buf.mdensity[ i ];
+	register cfloat3 ipos = buf.displayBuffer[i].pos;
+	register cfloat3 iveleval = buf.mveleval[i];
+	register float ipress = buf.mpress[i];
+	register float idens = buf.mdensity[i];
 	register cfloat3 *ivelxcor = buf.mf_velxcor+i;
 	register float ivisc = buf.mf_visc[i];
 
@@ -488,7 +489,7 @@ __global__ void ComputeForce (bufList buf, int pnum){
 	for (int c=0; c < simData.gridAdjCnt; c++) {
 		force += contributeForce_new ( i, muloffseti, ipos, iveleval, ipress, idens, gc + simData.gridAdj[c], buf, ivelxcor, ivisc);
 	}
-	buf.mforce[ i ] = force;
+	buf.mforce[i] = force;
 	if (buf.MFid[i]==0) {
 
 		//buf.mclr[i] = COLORA(0,0,1,1);
@@ -511,15 +512,15 @@ __global__ void SurfaceDetection(bufList buf, int pnum){
 
 	// Get search cell
 	int nadj = (1*simData.gridRes.z + 1)*simData.gridRes.x + 1;
-	uint gc = buf.mgcell[ i ];
+	uint gc = buf.mgcell[i];
 	if ( gc == GRID_UNDEF ) return;						// particle out-of-range
 	gc -= nadj;
 
 	register uint muloffseti = i * MAX_FLUIDNUM;
-	register cfloat3 ipos = buf.mpos[ i ];
-	register cfloat3 iveleval = buf.mveleval[ i ];
-	register float ipress = buf.mpress[ i ];
-	register float idens = buf.mdensity[ i ];
+	register cfloat3 ipos = buf.displayBuffer[i].pos;
+	register cfloat3 iveleval = buf.mveleval[i];
+	register float ipress = buf.mpress[i];
+	register float idens = buf.mdensity[i];
 	register cfloat3 *ivelxcor = buf.mf_velxcor+i;
 	register float ivisc = buf.mf_visc[i];
 
@@ -559,7 +560,7 @@ __device__ void contributeSurfaceTensionYT(int i, cfloat3& res, int cell, bufLis
         if (buf.misbound[j]==1)
             continue;
 
-        dist = buf.mpos[i] - buf.mpos[j];
+        dist = buf.displayBuffer[i].pos - buf.displayBuffer[j].pos;
         dsq = dot(dist,dist);
         if (dsq != 0.0 && dsq <= tR){
             dsq = sqrt(dsq);
@@ -580,15 +581,15 @@ __global__ void SurfaceTension(bufList buf, int pnum){
 
 	// Get search cell
 	int nadj = (1*simData.gridRes.z + 1)*simData.gridRes.x + 1;
-	uint gc = buf.mgcell[ i ];
+	uint gc = buf.mgcell[i];
 	if ( gc == GRID_UNDEF ) return;						// particle out-of-range
 	gc -= nadj;
 
 	register uint muloffseti = i * MAX_FLUIDNUM;
-	register cfloat3 ipos = buf.mpos[ i ];
-	register cfloat3 iveleval = buf.mveleval[ i ];
-	register float ipress = buf.mpress[ i ];
-	register float idens = buf.mdensity[ i ];
+	register cfloat3 ipos = buf.displayBuffer[i].pos;
+	register cfloat3 iveleval = buf.mveleval[i];
+	register float ipress = buf.mpress[i];
+	register float idens = buf.mdensity[i];
 	register cfloat3 *ivelxcor = buf.mf_velxcor+i;
 	register float ivisc = buf.mf_visc[i];
 
@@ -598,7 +599,7 @@ __global__ void SurfaceTension(bufList buf, int pnum){
 		contributeSurfaceTensionYT ( i, force, gc + simData.gridAdj[c], buf);
 	}
 
-	buf.mforce[ i ] = force + buf.mforce[i] * paramCarrier.fBlending;
+	buf.mforce[i] = force + buf.mforce[i] * paramCarrier.fBlending;
 
 }
 
@@ -609,7 +610,7 @@ __global__ void AdvanceParticles(float time, float dt, float ss, bufList buf, in
 	if (i >= numPnts) return;
 
 	if (buf.mgcell[i] == GRID_UNDEF) {
-		buf.mpos[i] = cfloat3(-1000, -1000, -1000);
+		buf.displayBuffer[i].pos = cfloat3(-1000, -1000, -1000);
 		buf.mvel[i] = cfloat3(0, 0, 0);
 		return;
 	}
@@ -617,7 +618,7 @@ __global__ void AdvanceParticles(float time, float dt, float ss, bufList buf, in
 	// Get particle vars
 	register cfloat3 accel, norm;
 	register float diff, adj, accelLen;
-	register cfloat3 pos = buf.mpos[i];
+	register cfloat3 pos = buf.displayBuffer[i].pos;
 	register cfloat3 veval = buf.mveleval[i];
 	
 	accel = cfloat3(0, 0, 0);
@@ -699,7 +700,7 @@ __global__ void AdvanceParticles(float time, float dt, float ss, bufList buf, in
 	if(buf.MFid[i]==0){
 		//printf("%f %f %f\n",buf.mforce[i].x, buf.mforce[i].y, buf.mforce[i].z);
 		//printf("dens %f\n",buf.mpress[i]);
-		//printf("pos %f %f %f\n",buf.mpos[i].x,buf.mpos[i].y,buf.mpos[i].z);
+		//printf("pos %f %f %f\n",buf.displayBuffer[i].pos.x,buf.displayBuffer[i].pos.y,buf.displayBuffer[i].pos.z);
 	}
 	accel += simData.pgravity;
 	// Accel Limit
@@ -718,7 +719,8 @@ __global__ void AdvanceParticles(float time, float dt, float ss, bufList buf, in
 			vel *= simData.fluidVConstraint / vmod;*/
 
 		cfloat3 vnext = accel*dt + vel;		// v(t+1/2) = v(t-1/2) + a(t) dt
-		buf.mpos[i] += vnext * dt / ss;
+		//buf.displayBuffer[i].pos += vnext * dt / ss;
+		buf.displayBuffer[i].pos += vnext*dt/ss;
 		buf.mveleval[i] = (vel+vnext)*0.5;
 		buf.mvel[i] = vnext;
 		buf.accel[i] = accel;

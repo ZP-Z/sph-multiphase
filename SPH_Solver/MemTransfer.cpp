@@ -16,7 +16,7 @@ void FluidSystem::TransferToCUDA ()
 	CopyToCUDA ( (float*) mPos, (float*) mVel, (float*) mVelEval, (float*) mForce, mPressure, mDensity, NULL, NULL, (char*) mClr); 
 
 	CopyMfToCUDA ( m_alpha, m_alpha_pre, m_pressure_modify, (float*) m_vel_phrel, m_restMass, m_restDensity, m_visc, (float*)m_velxcor, (float*)m_alphagrad);
-	CopyToCUDA_Uproject((int*) MF_type, MF_tensor, MF_id);
+	CopyToCUDA_Uproject(MF_type, MF_tensor, MF_id, displayBuffer);
 
 	CopyBoundToCUDA(mIsBound);
 }
@@ -26,14 +26,14 @@ void FluidSystem::TransferFromCUDA ()
 {
 	CopyFromCUDA ( (float*) mPos, (float*) mVel, (float*) mVelEval, (float*) mForce, mPressure, mDensity, NULL, NULL, (char*) mClr, 1);
 	CopyMfFromCUDA ( m_alpha, m_alpha_pre, m_pressure_modify, (float*) m_vel_phrel, m_restMass, m_restDensity, m_visc, (float*)m_velxcor, (float*)m_alphagrad, 1);
-	CopyFromCUDA_Uproject(MF_type, MF_id, MF_pepsilon, MF_tensor, 1);
+	CopyFromCUDA_Uproject(MF_type, MF_id, MF_pepsilon, MF_tensor, 1, displayBuffer);
 
 	CopyBoundFromCUDA(mIsBound);
 }
 
 void FluidSystem::LiquidToBubble() {
 	CopyFromCUDA((float*)mPos, (float*)mVel, (float*)mVelEval, (float*)mForce, mPressure, mDensity, NULL, NULL, (char*)mClr, 1);
-	CopyFromCUDA_Uproject(MF_type, MF_id, MF_pepsilon, MF_tensor, 1);
+	CopyFromCUDA_Uproject(MF_type, MF_id, MF_pepsilon, MF_tensor, 1, displayBuffer);
 
 	for (int i=0; i< pointNum; i++) {
 		if ( dot(mPos[i],mPos[i]) <100.0f ) {
@@ -42,7 +42,7 @@ void FluidSystem::LiquidToBubble() {
 	}
 
 	//CopyToCUDA((float*)mPos, (float*)mVel, (float*)mVelEval, (float*)mForce, mPressure, mDensity, mClusterCell, mGridNext, (char*)mClr);
-	CopyToCUDA_Uproject(MF_type, MF_tensor, MF_id);
+	CopyToCUDA_Uproject(MF_type, MF_tensor, MF_id, displayBuffer);
 }
 
 void FluidSystem::TransferFromCUDAForLoad ()
@@ -51,7 +51,7 @@ void FluidSystem::TransferFromCUDAForLoad ()
 	CopyMfFromCUDA ( m_alpha, m_alpha_pre, m_pressure_modify, (float*) m_vel_phrel, m_restMass, m_restDensity, m_visc, (float*)m_velxcor, (float*)m_alphagrad, 2);
 
 	CopyBoundFromCUDA(mIsBound);
-	CopyFromCUDA_Uproject(MF_type, MF_id, MF_pepsilon, MF_tensor, 2);
+	CopyFromCUDA_Uproject(MF_type, MF_id, MF_pepsilon, MF_tensor, 2,displayBuffer);
 }
 
 //void FluidSystem::prepareProju(){

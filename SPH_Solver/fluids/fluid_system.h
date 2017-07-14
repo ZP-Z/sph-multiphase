@@ -11,20 +11,8 @@
 #include "../common_header.h"
 #include "../CatToolBox.h"
 
-#define MAX_PARAM			60
 #define GRID_UCHAR			0xFF
 #define GRID_UNDEF			4294967295
-
-//From YanXiao
-#define OUTPUT_INT			1
-#define START_OUTPUT		2
-#define SHOW_BOUND			3
-#define SAVE_STAT			4
-#define CHANGE_DEN			6
-#define SHOW_PROPERTY		7
-#define SHOW_TYPE			8
-
-
 
 struct ParamCarrier {
 
@@ -103,6 +91,101 @@ public:
 	void EmitImmediate(std::vector<cfloat3>& container);
 };
 
+
+struct displayPack {
+	cfloat3 pos;
+	cfloat4 color;
+	int type;
+};
+struct calculationPack {
+	cfloat3 vel;
+	cfloat3 veleval;
+	float pressure;
+	float dens;
+	float restdens;
+	float restmass;
+	float visc;
+};
+//remain unsorted
+struct IntermediatePack {
+
+};
+
+struct bufList {
+	//Particle properties
+	cfloat3*			mpos;
+	cfloat3*			mvel;
+	cfloat3*			mveleval;
+	cfloat3*			mforce;
+	float*			mpress;
+	float*			last_mpress;
+	float*			mdensity;
+	uint*			mgcell;
+	uint*			mgndx;
+	uint*			mclr;
+	cfloat4*			mColor;
+	int*			misbound;
+	cfloat3*			accel; //leapfrog integration
+							   //End particle properties
+
+	displayPack* displayBuffer;
+	calculationPack* calcBuffer;
+	IntermediatePack* intmBuffer;
+
+	//multi fluid
+	float*			mf_alpha;				// MAX_FLUIDNUM * 4 bytes for each particle
+	float*			mf_alpha_pre;			// MAX_FLUIDNUM * 4 bytes for each particle
+	float*			mf_pressure_modify;	//  4 bytes for each particle
+	cfloat3*			mf_vel_phrel;			// MAX_FLUIDNUM * 12 bytes for each particle
+	float*			mf_restmass;
+	float*			mf_restdensity;
+	float*			mf_visc;
+	cfloat3*			mf_velxcor;
+	cfloat3*			mf_alphagrad;			// MAX_FLUIDNUM * 12 bytes for each particle
+
+	int*            MFtype;
+	int*			MFid;					//particle id
+	int*			MFidTable;				//id table
+	float*			MFtensor;				//sigma_s
+	float*			MFtemptensor;			//sigma
+	float*			MFRtensor;				//Artificial Tensor
+	float*			MFvelgrad;				//velocity grad
+	float*			MFpepsilon;
+
+	int*			mf_multiFlag;			// basically a variously used buffer
+											//End multi fluid
+
+	uint*			mcluster;
+
+	//For sorting
+	char*			msortbuf;
+	uint*			mgrid;
+	int*			mgridcnt;
+	int*			mgridoff;
+	int*			mgridactive;
+	//new sort
+	uint*			midsort;
+	//End sorting
+
+	//Mpm Grid
+	//Split Grid For Phases!
+	float*          mpmMass;
+	cfloat3*         mpmVel;
+	cfloat3*         mpmForce;
+	float*          mpmTensor;
+
+	float*          mpmAlpha;
+
+	uint*           mpmGid;    //mpmSize
+	uint*           mpmIdSort; //mpmSize
+	int*            mpmGridVList; //mpmSize
+	int*            mpmGridCnt;//gridSize
+	int*            mpmGridOff; //gridSize
+
+	cfloat3*         mpmPos;
+
+};// End particle&grid buffers
+
 class FluidSystem {
 public:
 	FluidSystem ();
@@ -159,6 +242,8 @@ public:
 	void TransferFromCUDA();
 	void TransferFromCUDAForLoad();
 	void EmitUpdateCUDA(int startnum, int endnum);
+	void TransferToCUDA(bufList& fbuf);
+	void TransferFromCUDA(bufList& fbuf);
 
 
 
@@ -223,6 +308,10 @@ public:
 	int*					MF_idTable;
 	float*					MF_pepsilon;
 	
+	displayPack* displayBuffer;
+	calculationPack* calculationBuffer;
+	IntermediatePack* intmBuffer;
+
 	float boundarySpacing;
 	float boundarySpacingFactor;
 

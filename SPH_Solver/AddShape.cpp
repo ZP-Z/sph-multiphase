@@ -82,9 +82,18 @@ void FluidSystem::SetupMfAddVolume ( cfloat3 min, cfloat3 max, float spacing, cf
 				*(m_restMass+p) = hostCarrier.massArr[cat];
 				*(m_restDensity+p) = hostCarrier.densArr[cat];
                 //mClr[p] = COLORA(m_alpha[p*MAX_FLUIDNUM],m_alpha[p*MAX_FLUIDNUM+1],m_alpha[p*MAX_FLUIDNUM+2],0.8);
-				mColor[p].Set(0.2,0.6,0.7,1.0);
+				//mColor[p].Set(0.2,0.6,0.7,1.0);
 				*(m_visc+p) = hostCarrier.viscArr[cat];
 				*(MF_type+p) = 0; 
+
+				displayBuffer[p].pos.Set(x+randx[0], y+randx[1], z+randx[2]);
+				displayBuffer[p].color.Set((float)rand()/RAND_MAX, (float)rand()/RAND_MAX, (float)rand()/RAND_MAX,1.0);
+				displayBuffer[p].type = 0;
+
+				calculationBuffer[p].restdens = hostCarrier.densArr[cat];
+				calculationBuffer[p].restmass = hostCarrier.massArr[cat];
+				calculationBuffer[p].visc = hostCarrier.viscArr[cat];
+
 			}
 			
 		}
