@@ -89,6 +89,9 @@ struct cfloat3 {
 	HDFUNC void operator*= (float b) {
 		x*=b; y*=b; z*=b;
 	}
+	HDFUNC void operator/= (float b) {
+		x/=b; y/=b; z/=b;
+	}
 	HDFUNC void operator /= (cfloat3& b){
 		x/=b.x; y/=b.y; z/=b.z;
 	}

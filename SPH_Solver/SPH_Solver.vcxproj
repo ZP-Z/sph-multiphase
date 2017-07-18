@@ -199,18 +199,10 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CudaCompile Include="fluidMath.cu" />
-    <CudaCompile Include="MpmSolver.cu">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-    </CudaCompile>
-    <CudaCompile Include="multiphase.cu">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-    </CudaCompile>
-    <CudaCompile Include="sph_solid.cu">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-    </CudaCompile>
+    <CudaCompile Include="stokesian\Mobility.cu" />
     <None Include="fluids\fluid_system_host.cuh" />
     <None Include="fluids\fluid_system_kern.cuh" />
+    <CudaCompile Include="fluids\fluidMath.cu" />
     <CudaCompile Include="fluids\fluid_system_host.cu">
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(CUDA_PATH)\bin\nvcc.exe" -lcuda -lcublas -lcudart -m 32 -arch=sm_20 -ccbin "$(VCInstallDir)\bin" -c -D_DEBUG -DWIN32 -D_CONSOLE -D_MBCS -Xcompiler /EHsc,/W3,/nologo,/Od,/Zi,/RTC1,/MTd -I "$(CUDA_INC_PATH)"%3b -I./  -I../../common/inc -o $(Configuration)\fluid_system_host.obj fluids\fluid_system_host.cu
  </Command>
@@ -253,19 +245,20 @@
     <ClInclude Include="fluids\fluid_system.h" />
     <ClInclude Include="fluids\svd3_cuda.h" />
     <ClInclude Include="SolverGUI.h" />
+    <ClInclude Include="stokesian\Mobility.cuh" />
+    <ClInclude Include="stokesian\stokesian.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="AddShape.cpp" />
     <ClCompile Include="catpaw\catXMLHelper.cpp" />
     <ClCompile Include="catpaw\geometry.cpp" />
     <ClCompile Include="catpaw\glUtils.cpp" />
-    <ClCompile Include="FluidIOUtility.cpp" />
+    <ClCompile Include="fluids\AddShape.cpp" />
+    <ClCompile Include="fluids\FluidIOUtility.cpp" />
     <ClCompile Include="fluids\fluid_system.cpp" />
+    <ClCompile Include="fluids\MemTransfer.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="MemTransfer.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="SolverGUI.cpp" />
+    <ClCompile Include="stokesian\stokesian.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

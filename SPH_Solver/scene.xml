@@ -30,8 +30,8 @@
 	<SoftBoundMin>	-35, 0, -35 </SoftBoundMin>
 	<SoftBoundMax>	 35, 180, 35 </SoftBoundMax>
 	
-    <VolMin0>		 -20, 5, -20	</VolMin0>
-	<VolMax0>		 20, 30,  20	</VolMax0>
+    <VolMin0>		 -10,   5, -10	</VolMin0>
+	<VolMax0>		  10,  30,  10	</VolMax0>
 
 	<VolMin1>		 -20, 12, -10	</VolMin1>
 	<VolMax1>		  -2, 32,  10	</VolMax1>

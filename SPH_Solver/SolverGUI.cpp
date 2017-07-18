@@ -267,8 +267,9 @@ int frame;
 void SolverGUI::render(){
 
 	if (!bPause) {
-		psys->Run(window_width, window_height);
-
+		//psys->Run(window_width, window_height);
+		
+		stokesian->step();
 		frame++;
 		//measureFPS();
 	}
@@ -714,9 +715,13 @@ void SolverGUI::CreateCube(){
 	ShaderIds[0] = glCreateProgram();
 	ExitOnGLError("ERROR: Could not create the shader program");
 
-	ShaderIds[1] = LoadShader("shader/SimpleShader.fragment.glsl", GL_FRAGMENT_SHADER);
-	ShaderIds[2] = LoadShader("shader/SimpleShader.vertex.glsl", GL_VERTEX_SHADER);
-	ShaderIds[3] = LoadShader("shader/SimpleShader.geometry.glsl", GL_GEOMETRY_SHADER);
+	ShaderIds[1] = LoadShader("shader/SimpleShader.fragment.glsl",	GL_FRAGMENT_SHADER);
+
+	//ShaderIds[2] = LoadShader("shader/SimpleShader.geometry.glsl",	GL_GEOMETRY_SHADER);
+	ShaderIds[2] = LoadShader("shader/Cubic.geometry.glsl", GL_GEOMETRY_SHADER);
+
+	ShaderIds[3] = LoadShader("shader/SimpleShader.vertex.glsl",	GL_VERTEX_SHADER);
+	
 	glAttachShader(ShaderIds[0], ShaderIds[1]);
 	glAttachShader(ShaderIds[0], ShaderIds[2]);
 	glAttachShader(ShaderIds[0], ShaderIds[3]);
@@ -888,19 +893,20 @@ void SolverGUI::DrawParticleSystem(){
 	glBindVertexArray(BufferIds[0]);
 	ExitOnGLError("ERROR: Could not bind the VAO for drawing purposes");
 
-	pointNum = psys->pointNum;
+	//pointNum = psys->pointNum;
 	//Update Particle Data
 	glBindBuffer(GL_ARRAY_BUFFER, BufferIds[1]);
 	//glBufferData(GL_ARRAY_BUFFER, sizeof(float)*3*maxPointNum, NULL, GL_STATIC_DRAW);
 	//glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float)*3*pointNum, psys->mPos);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(displayPack)*maxPointNum, NULL,GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(displayPack)*pointNum, psys->displayBuffer);
+	//glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(displayPack)*pointNum, psys->displayBuffer);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(displayPack)*(*pnum), dispBuffer);
 
 	//glBindBuffer(GL_ARRAY_BUFFER, BufferIds[2]);
 	//glBufferData(GL_ARRAY_BUFFER, sizeof(float)*4*maxPointNum, NULL, GL_STATIC_DRAW);
 	//glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float)*4*pointNum, psys->mColor);
 	
-	glDrawArrays(GL_POINTS, 0, pointNum);
+	glDrawArrays(GL_POINTS, 0, *pnum);
 	ExitOnGLError("ERROR: Could not draw the cube");
 
 	glBindVertexArray(0);
@@ -949,8 +955,13 @@ void SolverGUI::DrawCube(){
 
 
 void SolverGUI::SetupSolver(){
-	psys = new FluidSystem();
-	psys->Setup(true);
+	//psys = new FluidSystem();
+	//psys->Setup(true);
+	
+	stokesian = new stokesianSolver();
+	stokesian->SetupSolver();
+	pnum = &stokesian->pointNum;
+	dispBuffer = stokesian->displayBuffer;
 }
 
 void SolverGUI::Run(){
@@ -958,6 +969,8 @@ void SolverGUI::Run(){
 }
 
 void SolverGUI::Exit(){
-	psys->Exit();
-	delete psys;
+	//psys->Exit();
+	//delete psys;
+
+	delete stokesian;
 }

@@ -52,9 +52,9 @@ void  RotateZ(cfloat3& a, float b) {
 
 void  RotateXYZ(cfloat3& a, cfloat3& xyz) {
 	cfloat3 tmp = a; //backup
-	RotateX(a, xyz.x);
-	RotateY(a, xyz.y);
-	RotateZ(a, xyz.z);
+	RotateX(tmp, xyz.x);
+	RotateY(tmp, xyz.y);
+	RotateZ(tmp, xyz.z);
 	a = tmp;
 }
 

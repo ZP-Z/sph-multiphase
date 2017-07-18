@@ -5,18 +5,24 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "fluid_system_host.cuh"	
 
+#include "fluid_system_host.cuh"	
 #include "fluid_system.h"
+
+#include "stokesian/stokesian.h"
+
 #include "CatToolBox.h"
 
+struct vertex {
+	cfloat3 pos;
+	cfloat4 color;
+};
+
+typedef std::vector<vertex> varray;
 
 class SolverGUI{
 
 public:
-
-	//FluidSystem* psys;
-
 	void SetupSolver();
 
 	void Run();
@@ -34,20 +40,7 @@ public:
 	//GL functions
 	void render();
 
-	//rendering utilities
-	GLuint ProjectionMatrixUniformLocation,
-		ViewMatrixUniformLocation,
-		ModelMatrixUniformLocation,
-		ParticleSizeUniformLocation,
-		BufferIds[3]={0},
-		ShaderIds[4]={0};
-	cmat4 ProjectionMatrix,
-		ViewMatrix,
-		ModelMatrix;
-	float CubeRotation = 0;
-	clock_t LastTime = 0;
 
-	cCamera camera;
 
 	void Initialize(int argc,char** argv);
 	
@@ -56,15 +49,44 @@ public:
 	void DrawCube(void);
 	void ReSize(int width,int height);
 
-	int maxPointNum;
-	int pointNum;
+	
 	void DrawParticleSystem();
 	void CreateParticleSystem();
 
+
+
+	//rendering particles
+	GLuint ProjectionMatrixUniformLocation,
+		ViewMatrixUniformLocation,
+		ModelMatrixUniformLocation,
+		ParticleSizeUniformLocation;
+	GLuint ShaderIds[4]; //program, vertex, geometry, fragment
+	GLuint BufferIds[3];
+
+	//rendering simple geometry
+	GLuint SimpleGeoShader[3]; //0-program, 1-vertex, 2-fragment
+	varray planeGrid;
+
+	cmat4 ProjectionMatrix,
+		ViewMatrix,
+		ModelMatrix;
+
+	float CubeRotation = 0;
+	clock_t LastTime = 0;
+
+	cCamera camera;
+	//buffer bindings
+	displayPack* dispBuffer;
+	int* pnum;
+
+
+
+
+
 	//simulation
 	FluidSystem* psys;
+	stokesianSolver* stokesian;
+
+	int maxPointNum;
+	int pointNum;
 };
-
-
-void cudaInit(int argc, char** argv);
-

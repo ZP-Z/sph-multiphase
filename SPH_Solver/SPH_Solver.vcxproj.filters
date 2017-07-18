@@ -4,15 +4,6 @@
     <ClCompile Include="fluids\fluid_system.cpp">
       <Filter>fluid</Filter>
     </ClCompile>
-    <ClCompile Include="FluidIOUtility.cpp">
-      <Filter>fluid</Filter>
-    </ClCompile>
-    <ClCompile Include="MemTransfer.cpp">
-      <Filter>fluid</Filter>
-    </ClCompile>
-    <ClCompile Include="AddShape.cpp">
-      <Filter>fluid</Filter>
-    </ClCompile>
     <ClCompile Include="SolverGUI.cpp">
       <Filter>GUI</Filter>
     </ClCompile>
@@ -27,6 +18,18 @@
     </ClCompile>
     <ClCompile Include="catpaw\catXMLHelper.cpp">
       <Filter>cat_paw</Filter>
+    </ClCompile>
+    <ClCompile Include="fluids\AddShape.cpp">
+      <Filter>fluid</Filter>
+    </ClCompile>
+    <ClCompile Include="fluids\FluidIOUtility.cpp">
+      <Filter>fluid</Filter>
+    </ClCompile>
+    <ClCompile Include="fluids\MemTransfer.cpp">
+      <Filter>fluid</Filter>
+    </ClCompile>
+    <ClCompile Include="stokesian\stokesian.cpp">
+      <Filter>stokesian</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -60,6 +63,12 @@
     <ClInclude Include="catpaw\catXMLhelper.h">
       <Filter>cat_paw</Filter>
     </ClInclude>
+    <ClInclude Include="stokesian\Mobility.cuh">
+      <Filter>stokesian</Filter>
+    </ClInclude>
+    <ClInclude Include="stokesian\stokesian.h">
+      <Filter>stokesian</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="fluids\fluid_system_kern.cuh">
@@ -82,6 +91,9 @@
     <Filter Include="GUI">
       <UniqueIdentifier>{7cedaf9a-146c-40d9-b157-6bdaab3e49f9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="stokesian">
+      <UniqueIdentifier>{d23d60f4-8bd1-4266-a23e-8129f3fcc122}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="fluids\fluid_system_host.cu">
@@ -90,17 +102,11 @@
     <CudaCompile Include="fluids\fluid_system_kern.cu">
       <Filter>fluid\CudaCode</Filter>
     </CudaCompile>
-    <CudaCompile Include="MpmSolver.cu">
+    <CudaCompile Include="fluids\fluidMath.cu">
       <Filter>fluid\CudaCode</Filter>
     </CudaCompile>
-    <CudaCompile Include="fluidMath.cu">
-      <Filter>fluid\CudaCode</Filter>
-    </CudaCompile>
-    <CudaCompile Include="multiphase.cu">
-      <Filter>fluid\CudaCode</Filter>
-    </CudaCompile>
-    <CudaCompile Include="sph_solid.cu">
-      <Filter>fluid\CudaCode</Filter>
+    <CudaCompile Include="stokesian\Mobility.cu">
+      <Filter>stokesian</Filter>
     </CudaCompile>
   </ItemGroup>
 </Project>
