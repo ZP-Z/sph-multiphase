@@ -82,6 +82,7 @@ public:
 	cfloat3* omega; //angle speed
 	//float* psize;
 	float* lifetime;
+	cmat4* rotationMat;
 
 
     //cuda device buffer

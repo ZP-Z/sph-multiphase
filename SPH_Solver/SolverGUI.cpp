@@ -336,7 +336,7 @@ void SolverGUI::ReSize(int width, int height) {
 	camera.SetProjParam(60, (float)width/height, 1.0f, 1000.0f);
 	camera.ProjectionMat();
 
-	glUseProgram(ShaderIds[0]);
+	glUseProgram(shaders[0].programid);
 	glUniformMatrix4fv(ProjectionMatrixUniformLocation, 1, GL_FALSE, camera.projmat.data);
 	glUseProgram(0);
 }
@@ -613,25 +613,20 @@ void SolverGUI::Initialize(int argc, char** argv){
 	glutInitContextProfile(GLUT_CORE_PROFILE);
 
 	glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
-
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH |GLUT_MULTISAMPLE);
-	//glutInitWindowPosition(100, 100);
 	glutInitWindowSize((int)window_width, (int)window_height);
-	
 	glutCreateWindow("Multiphase Nekobus");
 
 
 
 
-
+	// GL extensions
 	GLenum GlewInitResult = glewInit();
 	if (GLEW_OK != GlewInitResult) {
 		fprintf(stderr, "ERROR: %s\n", glewGetErrorString(GlewInitResult));
 		exit(EXIT_FAILURE);
 	}
-
 	fprintf(stdout, "INFO: OpenGL Version: %s\n", glGetString(GL_VERSION));
-	glClearColor(0, 0, 0, 0);
 
 
 
@@ -648,11 +643,7 @@ void SolverGUI::Initialize(int argc, char** argv){
 
 	glutMouseFunc(mouse_click_func);
 	glutMotionFunc(mouse_drag_func);
-	//glutPassiveMotionFunc(mouse_move_func);
 	glutIdleFunc(idle_func);
-
-
-
 
 
 
@@ -660,20 +651,15 @@ void SolverGUI::Initialize(int argc, char** argv){
 	ModelMatrix = IDENTITY_MAT;
 	ProjectionMatrix = IDENTITY_MAT;
 	camera.forceup = cfloat3(0, 1, 0);
-	camera.lookat(cfloat3(0, 40, 60), cfloat3(0, 20, -40));
+	camera.lookat(cfloat3(0, 20, 20), cfloat3(0, 10, -40));
 	ViewMatrix = camera.viewmat;
 	
-
-
 
 
 	//Shaders & VAO, VBO
 	CreateParticleSystem();
 
 	
-
-
-
 
 	//Texture
 	int width,height;
@@ -690,134 +676,136 @@ void SolverGUI::Initialize(int argc, char** argv){
 }
 
 
-void SolverGUI::CreateCube(){
-	const cvertex VERTICES[8] =
-	{
-		{{-.5f, -.5f,  .5f, 1},{0, 0, 1, 1}},
-		{{-.5f,  .5f,  .5f, 1},{1, 0, 0, 1}},
-		{{.5f,  .5f,  .5f, 1},{0, 1, 0, 1}},
-		{{.5f, -.5f,  .5f, 1},{1, 1, 0, 1}},
-		{{-.5f, -.5f, -.5f, 1},{1, 1, 1, 1}},
-		{{-.5f,  .5f, -.5f, 1},{1, 0, 0, 1}},
-		{{.5f,  .5f, -.5f, 1},{1, 0, 1, 1}},
-		{{.5f, -.5f, -.5f, 1},{0, 0, 1, 1}}
-	};
-	const GLuint INDICES[36] =
-	{
-		0,2,1,  0,3,2,
-		4,3,0,  4,7,3,
-		4,1,5,  4,0,1,
-		3,6,2,  3,7,6,
-		1,6,5,  1,2,6,
-		7,5,6,  7,4,5
-	};
+//void SolverGUI::CreateCube(){
+//	const cvertex VERTICES[8] =
+//	{
+//		{{-.5f, -.5f,  .5f, 1},{0, 0, 1, 1}},
+//		{{-.5f,  .5f,  .5f, 1},{1, 0, 0, 1}},
+//		{{.5f,  .5f,  .5f, 1},{0, 1, 0, 1}},
+//		{{.5f, -.5f,  .5f, 1},{1, 1, 0, 1}},
+//		{{-.5f, -.5f, -.5f, 1},{1, 1, 1, 1}},
+//		{{-.5f,  .5f, -.5f, 1},{1, 0, 0, 1}},
+//		{{.5f,  .5f, -.5f, 1},{1, 0, 1, 1}},
+//		{{.5f, -.5f, -.5f, 1},{0, 0, 1, 1}}
+//	};
+//	const GLuint INDICES[36] =
+//	{
+//		0,2,1,  0,3,2,
+//		4,3,0,  4,7,3,
+//		4,1,5,  4,0,1,
+//		3,6,2,  3,7,6,
+//		1,6,5,  1,2,6,
+//		7,5,6,  7,4,5
+//	};
+//
+//	ShaderIds[0] = glCreateProgram();
+//	ExitOnGLError("ERROR: Could not create the shader program");
+//
+//	ShaderIds[1] = LoadShader("shader/SimpleShader.fragment.glsl",	GL_FRAGMENT_SHADER);
+//
+//	//ShaderIds[2] = LoadShader("shader/SimpleShader.geometry.glsl",	GL_GEOMETRY_SHADER);
+//	ShaderIds[2] = LoadShader("shader/Cubic.geometry.glsl", GL_GEOMETRY_SHADER);
+//
+//	ShaderIds[3] = LoadShader("shader/SimpleShader.vertex.glsl",	GL_VERTEX_SHADER);
+//	
+//	glAttachShader(ShaderIds[0], ShaderIds[1]);
+//	glAttachShader(ShaderIds[0], ShaderIds[2]);
+//	glAttachShader(ShaderIds[0], ShaderIds[3]);
+//
+//	glLinkProgram(ShaderIds[0]);
+//	ExitOnGLError("ERROR: Could not link the shader program");
+//
+//	ModelMatrixUniformLocation = glGetUniformLocation(ShaderIds[0], "ModelMatrix");
+//	ViewMatrixUniformLocation = glGetUniformLocation(ShaderIds[0], "ViewMatrix");
+//	ProjectionMatrixUniformLocation = glGetUniformLocation(ShaderIds[0], "ProjectionMatrix");
+//	ParticleSizeUniformLocation = glGetUniformLocation(ShaderIds[0],"particle_size");
+//	ExitOnGLError("ERROR: Could not get the shader uniform locations");
+//
+//	glGenBuffers(2, &BufferIds[1]);
+//	ExitOnGLError("ERROR: Could not generate the buffer objects");
+//
+//	glGenVertexArrays(1, &BufferIds[0]);
+//	ExitOnGLError("ERROR: Could not generate the VAO");
+//	glBindVertexArray(BufferIds[0]);
+//	ExitOnGLError("ERROR: Could not bind the VAO");
+//
+//	glEnableVertexAttribArray(0);
+//	glEnableVertexAttribArray(1);
+//	ExitOnGLError("ERROR: Could not enable vertex attributes");
+//
+//	glBindBuffer(GL_ARRAY_BUFFER, BufferIds[1]);
+//	glBufferData(GL_ARRAY_BUFFER, sizeof(VERTICES), VERTICES, GL_STATIC_DRAW);
+//	ExitOnGLError("ERROR: Could not bind the VBO to the VAO");
+//
+//	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(VERTICES[0]), (GLvoid*)0);
+//	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(VERTICES[0]), (GLvoid*)sizeof(VERTICES[0].position));
+//	ExitOnGLError("ERROR: Could not set VAO attributes");
+//
+//	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, BufferIds[2]);
+//	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(INDICES), INDICES, GL_STATIC_DRAW);
+//	ExitOnGLError("ERROR: Could not bind the IBO to the VAO");
+//
+//	glBindVertexArray(0);
+//
+//
+//	//Rendering Cubes
+//	//glEnable(GL_DEPTH_TEST);
+//	//glDepthFunc(GL_LESS);
+//	//glEnable(GL_CULL_FACE);
+//	//glCullFace(GL_BACK);
+//	//glFrontFace(GL_CCW);
+//	
+//}
 
-	ShaderIds[0] = glCreateProgram();
-	ExitOnGLError("ERROR: Could not create the shader program");
+//create shader
+//find the uniforms
+void SolverGUI::CreateShaders() {
+	shaderObject shader;
+	shader.loadShader("shader/SimpleShader.vertex.glsl", GL_VERTEX_SHADER);
+	shader.loadShader("shader/SimpleShader.geometry.glsl", GL_GEOMETRY_SHADER);
+	shader.loadShader("shader/SimpleShader.fragment.glsl", GL_FRAGMENT_SHADER);
 
-	ShaderIds[1] = LoadShader("shader/SimpleShader.fragment.glsl",	GL_FRAGMENT_SHADER);
+	shader.LinkProgram();
+	shaders.push_back(shader);
 
-	//ShaderIds[2] = LoadShader("shader/SimpleShader.geometry.glsl",	GL_GEOMETRY_SHADER);
-	ShaderIds[2] = LoadShader("shader/Cubic.geometry.glsl", GL_GEOMETRY_SHADER);
+	shaderId = 0;
 
-	ShaderIds[3] = LoadShader("shader/SimpleShader.vertex.glsl",	GL_VERTEX_SHADER);
+	ModelMatrixUniformLocation =	glGetUniformLocation(shaders[shaderId].programid, "ModelMatrix");
+	ViewMatrixUniformLocation =		glGetUniformLocation(shaders[shaderId].programid, "ViewMatrix");
+	ProjectionMatrixUniformLocation =	glGetUniformLocation(shaders[shaderId].programid, "ProjectionMatrix");
+	ParticleSizeUniformLocation =		glGetUniformLocation(shaders[shaderId].programid, "particle_size");
+
+	ExitOnGLError("ERROR: Could not get the shader uniform locations");
+}
+
+void SolverGUI::CreateCubicShaders() {
+	shaderObject shader;
+	shader.loadShader("shader/Cubic.vertex.glsl", GL_VERTEX_SHADER);
+	shader.loadShader("shader/Cubic.geometry.glsl", GL_GEOMETRY_SHADER);
+	shader.loadShader("shader/Cubic.fragment.glsl", GL_FRAGMENT_SHADER);
 	
-	glAttachShader(ShaderIds[0], ShaderIds[1]);
-	glAttachShader(ShaderIds[0], ShaderIds[2]);
-	glAttachShader(ShaderIds[0], ShaderIds[3]);
+	shader.LinkProgram();
+	shaders.push_back(shader);
 
-	glLinkProgram(ShaderIds[0]);
-	ExitOnGLError("ERROR: Could not link the shader program");
+	shaderId = 0;
+	ExitOnGLError("ERROR: Could not Link Program");
 
-	ModelMatrixUniformLocation = glGetUniformLocation(ShaderIds[0], "ModelMatrix");
-	ViewMatrixUniformLocation = glGetUniformLocation(ShaderIds[0], "ViewMatrix");
-	ProjectionMatrixUniformLocation = glGetUniformLocation(ShaderIds[0], "ProjectionMatrix");
-	ParticleSizeUniformLocation = glGetUniformLocation(ShaderIds[0],"particle_size");
+	//basic uniforms
+	ModelMatrixUniformLocation =	glGetUniformLocation(shaders[shaderId].programid, "ModelMatrix");
+	ViewMatrixUniformLocation =		glGetUniformLocation(shaders[shaderId].programid, "ViewMatrix");
+	ProjectionMatrixUniformLocation =	glGetUniformLocation(shaders[shaderId].programid, "ProjectionMatrix");
+	ParticleSizeUniformLocation =		glGetUniformLocation(shaders[shaderId].programid, "particle_size");
+	
 	ExitOnGLError("ERROR: Could not get the shader uniform locations");
 
-	glGenBuffers(2, &BufferIds[1]);
-	ExitOnGLError("ERROR: Could not generate the buffer objects");
-
-	glGenVertexArrays(1, &BufferIds[0]);
-	ExitOnGLError("ERROR: Could not generate the VAO");
-	glBindVertexArray(BufferIds[0]);
-	ExitOnGLError("ERROR: Could not bind the VAO");
-
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-	ExitOnGLError("ERROR: Could not enable vertex attributes");
-
-	glBindBuffer(GL_ARRAY_BUFFER, BufferIds[1]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(VERTICES), VERTICES, GL_STATIC_DRAW);
-	ExitOnGLError("ERROR: Could not bind the VBO to the VAO");
-
-	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(VERTICES[0]), (GLvoid*)0);
-	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(VERTICES[0]), (GLvoid*)sizeof(VERTICES[0].position));
-	ExitOnGLError("ERROR: Could not set VAO attributes");
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, BufferIds[2]);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(INDICES), INDICES, GL_STATIC_DRAW);
-	ExitOnGLError("ERROR: Could not bind the IBO to the VAO");
-
-	glBindVertexArray(0);
-
-
-	//Rendering Cubes
-	//glEnable(GL_DEPTH_TEST);
-	//glDepthFunc(GL_LESS);
-	//glEnable(GL_CULL_FACE);
-	//glCullFace(GL_BACK);
-	//glFrontFace(GL_CCW);
-	
+	glUseProgram(shaders[shaderId].programid);
+	ExitOnGLError("ERROR: Could not use the shader program");
 }
+
 
 void SolverGUI::CreateParticleSystem() {
 
-	float pos[] = {-.5,-.5,.5,
-		-.5,.5,.5,
-		.5,.5,.5,
-		.5,-.5,.5,
-		-.5,-.5,-.5,
-		-.5,.5,-.5,
-		.5,.5,-.5,
-		.5,-.5,-.5};
-	float color[]={ 0,0,1,1,
-		1,0,0,1,
-		0,1,0,1,
-		1,1,0,1,
-		1,1,1,1,
-		1,0,0,1,
-		1,0,1,1,
-		0,0,1,1};
-	displayPack tmpbuf[]={
-		{ cfloat3(-.5,-.5,.5) , cfloat4(0,0,1,1)},
-		{cfloat3(-.5,-.5,.5) , cfloat4(0,0,1,1)},
-		{cfloat3(-.5,-.5,.5) , cfloat4(0,0,1,1)},
-		{cfloat3(-.5,-.5,.5) , cfloat4(0,0,1,1)},
-		{cfloat3(-.5,-.5,.5) , cfloat4(0,0,1,1)},
-		{cfloat3(-.5,-.5,.5) , cfloat4(0,0,1,1)},
-		{cfloat3(-.5,-.5,.5) , cfloat4(0,0,1,1)},
-		{cfloat3(-.5,-.5,.5) , cfloat4(0,0,1,1)}
-	};
-
-	ShaderIds[0] = glCreateProgram();
-	ExitOnGLError("ERROR: Could not create the shader program");
-
-	ShaderIds[1] = LoadShader("shader/SimpleShader.fragment.glsl", GL_FRAGMENT_SHADER);
-	ShaderIds[2] = LoadShader("shader/SimpleShader.vertex.glsl", GL_VERTEX_SHADER);
-	ShaderIds[3] = LoadShader("shader/SimpleShader.geometry.glsl", GL_GEOMETRY_SHADER);
-	glAttachShader(ShaderIds[0], ShaderIds[1]);
-	glAttachShader(ShaderIds[0], ShaderIds[2]);
-	glAttachShader(ShaderIds[0], ShaderIds[3]);
-
-	glLinkProgram(ShaderIds[0]);
-	ExitOnGLError("ERROR: Could not link the shader program");
-
-	ModelMatrixUniformLocation = glGetUniformLocation(ShaderIds[0], "ModelMatrix");
-	ViewMatrixUniformLocation = glGetUniformLocation(ShaderIds[0], "ViewMatrix");
-	ProjectionMatrixUniformLocation = glGetUniformLocation(ShaderIds[0], "ProjectionMatrix");
-	ParticleSizeUniformLocation = glGetUniformLocation(ShaderIds[0], "particle_size");
-	ExitOnGLError("ERROR: Could not get the shader uniform locations");
+	CreateCubicShaders();
 
 	glGenBuffers(2, &BufferIds[1]);
 	ExitOnGLError("ERROR: Could not generate the buffer objects");
@@ -827,44 +815,45 @@ void SolverGUI::CreateParticleSystem() {
 	glBindVertexArray(BufferIds[0]);
 	ExitOnGLError("ERROR: Could not bind the VAO");
 
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(0);//pos
+	glEnableVertexAttribArray(1);//color
+	glEnableVertexAttribArray(2);//vec1
+	glEnableVertexAttribArray(3);//vec2
+	glEnableVertexAttribArray(4);//vec3
+	glEnableVertexAttribArray(5);//vec4
+
 	ExitOnGLError("ERROR: Could not enable vertex attributes");
 
 	maxPointNum = 20000; //100,000 needed for SPH
 	pointNum = 8;
 	glBindBuffer(GL_ARRAY_BUFFER, BufferIds[1]);
-	//glBufferData(GL_ARRAY_BUFFER, sizeof(cfloat3)*maxPointNum, NULL, GL_STATIC_DRAW);
-	//glBufferSubData(GL_ARRAY_BUFFER,0,sizeof(cfloat3)*pointNum,pos);
-	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(displayPack)*maxPointNum, NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0 ,sizeof(displayPack)*pointNum, tmpbuf);
-	glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,sizeof(displayPack),0);
-	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(displayPack), (void*)sizeof(cfloat3));
+	glVertexAttribPointer(0,	3,	GL_FLOAT,	GL_FALSE,	sizeof(displayPack),	0);
+	glVertexAttribPointer(1,	4,	GL_FLOAT,	GL_FALSE,	sizeof(displayPack),	(void*)sizeof(cfloat3));
 
-	//glBindBuffer(GL_ARRAY_BUFFER, BufferIds[2]);
-	//glBufferData(GL_ARRAY_BUFFER, sizeof(float)*4*maxPointNum, NULL, GL_STATIC_DRAW);
-	//glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(color), color);
-	//glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, 0);
-	
-	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, BufferIds[2]);
-	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(INDICES), INDICES, GL_STATIC_DRAW);
-	//ExitOnGLError("ERROR: Could not bind the IBO to the VAO");
+	glBindBuffer(GL_ARRAY_BUFFER, BufferIds[2]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(cmat4)*maxPointNum, NULL,GL_STATIC_DRAW);
+	glVertexAttribPointer(2, 4,	GL_FLOAT, GL_FALSE,	sizeof(cmat4), 0);
+	glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(cmat4), (void*)(sizeof(cfloat4)));
+	glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(cmat4), (void*)(sizeof(cfloat4)*2));
+	glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(cmat4), (void*)(sizeof(cfloat4)*3));
 
+	glUseProgram(shaders[shaderId].programid);
+	ExitOnGLError("ERROR: Could not use shader program");
 	glBindVertexArray(0);
 
-	
+
 }
 
-void SolverGUI::DestroyCube(){
-	glDetachShader(ShaderIds[0], ShaderIds[1]);
-	glDetachShader(ShaderIds[0], ShaderIds[2]);
-	glDeleteShader(ShaderIds[1]);
-	glDeleteShader(ShaderIds[2]);
-	glDeleteProgram(ShaderIds[0]);
-	ExitOnGLError("ERROR: Could not destroy the shaders");
 
-	glDeleteBuffers(2, &BufferIds[1]);
+
+void SolverGUI::DestroyCube(){
+	
+	for (int i=0; i<shaders.size(); i++) {
+		shaders[i].Release();
+	}
+
+	glDeleteBuffers(1, &BufferIds[1]);
 	glDeleteVertexArrays(1, &BufferIds[0]);
 	ExitOnGLError("ERROR: Could not destroy the buffer objects");
 }
@@ -875,11 +864,9 @@ void SolverGUI::DestroyCube(){
 
 void SolverGUI::DrawParticleSystem(){
 	
-	
-
 	ModelMatrix = IDENTITY_MAT;
 
-	glUseProgram(ShaderIds[0]);
+	glUseProgram(shaders[shaderId].programid);
 	ExitOnGLError("ERROR: Could not use the shader program");
 
 	glUniformMatrix4fv(ModelMatrixUniformLocation, 1, GL_FALSE, ModelMatrix.data);
@@ -887,67 +874,63 @@ void SolverGUI::DrawParticleSystem(){
 	
 	glUniformMatrix4fv(ProjectionMatrixUniformLocation, 1, GL_FALSE, camera.projmat.data);
 	
-	glUniform1f(ParticleSizeUniformLocation, 1.0f);
+	glUniform1f(ParticleSizeUniformLocation, 0.5f);
 	ExitOnGLError("ERROR: Could not set the shader uniforms");
 
 	glBindVertexArray(BufferIds[0]);
 	ExitOnGLError("ERROR: Could not bind the VAO for drawing purposes");
 
-	//pointNum = psys->pointNum;
 	//Update Particle Data
 	glBindBuffer(GL_ARRAY_BUFFER, BufferIds[1]);
-	//glBufferData(GL_ARRAY_BUFFER, sizeof(float)*3*maxPointNum, NULL, GL_STATIC_DRAW);
-	//glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float)*3*pointNum, psys->mPos);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(displayPack)*maxPointNum, NULL,GL_STATIC_DRAW);
-	//glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(displayPack)*pointNum, psys->displayBuffer);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(displayPack)*(*pnum), dispBuffer);
 
-	//glBindBuffer(GL_ARRAY_BUFFER, BufferIds[2]);
-	//glBufferData(GL_ARRAY_BUFFER, sizeof(float)*4*maxPointNum, NULL, GL_STATIC_DRAW);
-	//glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float)*4*pointNum, psys->mColor);
-	
+	glBindBuffer(GL_ARRAY_BUFFER, BufferIds[2]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(cmat4)*maxPointNum, NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(cmat4)*(*pnum), stokesian->rotationMat);
+
 	glDrawArrays(GL_POINTS, 0, *pnum);
-	ExitOnGLError("ERROR: Could not draw the cube");
+	ExitOnGLError("ERROR: Could not draw the Particle System");
 
 	glBindVertexArray(0);
 	glUseProgram(0);
 }
 
-void SolverGUI::DrawCube(){
-	float CubeAngle;
-	clock_t Now = clock();
-	if (LastTime == 0)
-		LastTime = Now;
-
-	CubeRotation += 45.0f * ((float)(Now - LastTime) / CLOCKS_PER_SEC);
-	CubeAngle = deg2rad(CubeRotation);
-	LastTime = Now;
-
-	ModelMatrix = IDENTITY_MAT;
-	RotateAboutY(ModelMatrix, CubeAngle);
-	RotateAboutX(ModelMatrix, CubeAngle);
-
-	glUseProgram(ShaderIds[0]);
-	ExitOnGLError("ERROR: Could not use the shader program");
-
-	glUniformMatrix4fv(ModelMatrixUniformLocation, 1, GL_FALSE, ModelMatrix.data);
-	glUniformMatrix4fv(ViewMatrixUniformLocation, 1, GL_FALSE, ViewMatrix.data);
-	glUniform1f(ParticleSizeUniformLocation, 0.05f);
-	ExitOnGLError("ERROR: Could not set the shader uniforms");
-
-	glBindVertexArray(BufferIds[0]);
-	ExitOnGLError("ERROR: Could not bind the VAO for drawing purposes");
-
-	//glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, (GLvoid*)0);
-	//glPointSize(10);
-	//glBindTexture(GL_TEXTURE_2D, img.getID());
-
-	glDrawArrays(GL_POINTS, 0, 8);
-	ExitOnGLError("ERROR: Could not draw the cube");
-
-	glBindVertexArray(0);
-	glUseProgram(0);
-}
+//void SolverGUI::DrawCube(){
+//	float CubeAngle;
+//	clock_t Now = clock();
+//	if (LastTime == 0)
+//		LastTime = Now;
+//
+//	CubeRotation += 45.0f * ((float)(Now - LastTime) / CLOCKS_PER_SEC);
+//	CubeAngle = deg2rad(CubeRotation);
+//	LastTime = Now;
+//
+//	ModelMatrix = IDENTITY_MAT;
+//	RotateAboutY(ModelMatrix, CubeAngle);
+//	RotateAboutX(ModelMatrix, CubeAngle);
+//
+//	glUseProgram(shaders[shaderId].programid);
+//	ExitOnGLError("ERROR: Could not use the shader program");
+//
+//	glUniformMatrix4fv(ModelMatrixUniformLocation, 1, GL_FALSE, ModelMatrix.data);
+//	glUniformMatrix4fv(ViewMatrixUniformLocation, 1, GL_FALSE, ViewMatrix.data);
+//	glUniform1f(ParticleSizeUniformLocation, 0.05f);
+//	ExitOnGLError("ERROR: Could not set the shader uniforms");
+//
+//	glBindVertexArray(BufferIds[0]);
+//	ExitOnGLError("ERROR: Could not bind the VAO for drawing purposes");
+//
+//	//glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, (GLvoid*)0);
+//	//glPointSize(10);
+//	//glBindTexture(GL_TEXTURE_2D, img.getID());
+//
+//	glDrawArrays(GL_POINTS, 0, 8);
+//	ExitOnGLError("ERROR: Could not draw the cube");
+//
+//	glBindVertexArray(0);
+//	glUseProgram(0);
+//}
 
 
 
@@ -964,9 +947,17 @@ void SolverGUI::SetupSolver(){
 	dispBuffer = stokesian->displayBuffer;
 }
 
+
+
+
+
 void SolverGUI::Run(){
 	glutMainLoop();
 }
+
+
+
+
 
 void SolverGUI::Exit(){
 	//psys->Exit();

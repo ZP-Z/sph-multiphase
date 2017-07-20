@@ -60,7 +60,6 @@ void  RotateXYZ(cfloat3& a, cfloat3& xyz) {
 
 
 
-
 /*-------------------------------------
 
 
@@ -94,7 +93,7 @@ void  RotateAboutX(cmat4& m,float ang){
 	rotation[2][1] = sine;
 	rotation[2][2] = cosine;
 
-	m = m * rotation;
+	m = m * rotation; //column major, right prod = left prod in row major
 }
 
 void  RotateAboutY(cmat4& m, float ang) {
@@ -171,9 +170,9 @@ float  angle(cfloat3& a,cfloat3& b){
 
 cmat4  cCamera::CameraRotateMat(){
 
-	cfloat3 right = cross(forceup,dir);
-	right = right * (1/sqrt(dot(right,right)));
-	this->right = right;
+	cfloat3 tmpright = cross(forceup,dir);
+	tmpright /= sqrt(dot(tmpright, tmpright));
+	right = tmpright;
 	up = cross(dir,right); //update up
 
 	cmat4 tmp = IDENTITY_MAT;
@@ -215,7 +214,7 @@ void cCamera::AdvanceCamera(float dt){
 			velf -= velf*10*dt;
 	}
 	else{
-		velf += (velMax - velf) * 5 * dt;
+		velf += (velMax - velf)  * dt;
 		getVelDir();
 	}
 
@@ -241,4 +240,16 @@ void cCamera::AdvanceCamera(float dt){
 	target = target+dx;
 
 	lookat(pos, target);
+	//printf("%f %f %f, %f %f %f\n",dir.x,dir.y,dir.z, vel.x,vel.y,vel.z);
+}
+
+void cCamera::lookat(cfloat3& _pos, cfloat3& _target) {
+	dir = _pos - _target;
+	dir = dir * (1/ sqrt(dot(dir, dir)));
+
+	pos = _pos;
+	target = pos - dir;
+
+	viewmat = CameraRotateMat();
+	CameraTranslateMat(viewmat, pos);
 }

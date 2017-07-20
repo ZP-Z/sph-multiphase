@@ -324,16 +324,7 @@ public:
 	}
 
 
-	void lookat(cfloat3& _pos, cfloat3& _target) {
-		dir = _pos - _target;
-		dir = dir * (1/ sqrt(dot(dir, dir)));
-		
-		pos = _pos;
-		target = pos - dir;
-
-		viewmat = CameraRotateMat();
-		CameraTranslateMat(viewmat, pos);
-	}
+	void lookat(cfloat3& _pos, cfloat3& _target);
 
 	//Moving Utility
 	void MoveCamera(cfloat3 dx){

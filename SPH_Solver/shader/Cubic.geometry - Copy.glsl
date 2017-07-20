@@ -107,7 +107,7 @@ void generateCube(vec4 P, mat4 localRotation){
   gl_Position = projview * (P + rotatedDx);
   EmitVertex();
 
-  displacement = vec3(-0.5,-0.5,0.5) * particle_size;
+  displacement = vec3(-0.5,0.5,-0.5) * particle_size;
   rotatedDx = localRotation * vec4(displacement, 0); 
   //gl_Position = projview * (P + vec4(displacement,0));
   gl_Position = projview * (P + rotatedDx);
@@ -124,7 +124,7 @@ void generateCube(vec4 P, mat4 localRotation){
 
 
   //right
-  int_Color = vec4(0.2,0.4,0.6,1);
+  int_Color = vec4(0.6,0.6,0.1,1);
   displacement =  vec3(0.5,-0.5,-0.5) * particle_size;
   rotatedDx = localRotation * vec4(displacement, 0); 
   //gl_Position = projview * (P + vec4(displacement,0));
@@ -137,7 +137,7 @@ void generateCube(vec4 P, mat4 localRotation){
   gl_Position = projview * (P + rotatedDx);
   EmitVertex();
 
-  displacement = vec3(0.5,-0.5,0.5) * particle_size;
+  displacement = vec3(0.5,0.5,-0.5) * particle_size;
   rotatedDx = localRotation * vec4(displacement, 0); 
   //gl_Position = projview * (P + vec4(displacement,0));
   gl_Position = projview * (P + rotatedDx);
@@ -155,7 +155,7 @@ void generateCube(vec4 P, mat4 localRotation){
 
 
   //front
-  int_Color = vec4(0.6,0.4,0.2,1);
+  int_Color = vec4(0.6,0.1,0.6,1);
   displacement =  vec3(-0.5,-0.5,0.5) * particle_size;
   rotatedDx = localRotation * vec4(displacement, 0); 
   //gl_Position = projview * (P + vec4(displacement,0));
@@ -223,7 +223,7 @@ void main(void)
 
   vec4 P = gl_in[0].gl_Position;
 
-  P = P;
+  P = ViewMatrix*P;
   //
   mat4 ex_Rotation;
   ex_Rotation[0][0] = gs_in[0].exvec0.x; ex_Rotation[1][0] = gs_in[0].exvec0.y; ex_Rotation[2][0] = gs_in[0].exvec0.z; ex_Rotation[3][0] = gs_in[0].exvec0.w;

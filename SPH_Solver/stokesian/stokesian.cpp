@@ -26,6 +26,7 @@ void stokesianSolver::AllocateBuffers() {
 	//host buffer
 	displayBuffer       = new displayPack[maxAllowNum];
 	direction = new cfloat3[maxAllowNum];
+	rotationMat = new cmat4[maxAllowNum];
 	force     = new cfloat3[maxAllowNum];
 	//torque    = new cfloat3[maxAllowNum];
 	unew      = new cfloat3[maxAllowNum];
@@ -97,6 +98,7 @@ void stokesianSolver::InjectWater(){
 		displayBuffer[pointNum].type = 0;
 		
 		direction[pointNum].Set(0,1,0);
+		rotationMat[pointNum] = IDENTITY_MAT;
 
 		//psize[pointNum] = 1;
 		pointNum++;
@@ -123,6 +125,14 @@ void stokesianSolver::step() {
 	frameNo++;
 }
 
+void rotateF3withMat(cmat4& rotationmat, cfloat3& a) {
+	cfloat3 res;
+	res.x = rotationmat[0][0]*a.x + rotationmat[1][0]*a.y + rotationmat[2][0]*a.z;
+	res.y = rotationmat[0][1]*a.x + rotationmat[1][1]*a.y + rotationmat[2][1]*a.z;
+	res.z = rotationmat[0][2]*a.x + rotationmat[1][2]*a.y + rotationmat[2][2]*a.z;
+	a = res;
+}
+
 void stokesianSolver::RunMobilityGPU() {
 	
 	simTimer += dt;
@@ -131,6 +141,7 @@ void stokesianSolver::RunMobilityGPU() {
 
 	float rotation[9];
 	cfloat3 tmpf3;
+	
 	//Advance
 	for (int i=0; i<pointNum; i++) {
 		displayBuffer[i].pos += unew[i]*dt;
@@ -141,10 +152,16 @@ void stokesianSolver::RunMobilityGPU() {
 			printf("omega*dt: %f %f %f\n", tmpf3.x, tmpf3.y, tmpf3.z);
 			printf("%f %f %f\n", direction[i].x, direction[i].y, direction[i].z);
 		}*/
+		cfloat3 init(0, 1, 0);
+		//RotateXYZ(direction[i], tmpf3);
 
-		RotateXYZ(direction[i], tmpf3);
+		RotateAboutX(rotationMat[i], tmpf3.x);
+		RotateAboutY(rotationMat[i], tmpf3.y);
+		RotateAboutZ(rotationMat[i], tmpf3.z);
+		rotateF3withMat(rotationMat[i], init);
+		
 		//printf("%f %f %f %f %d\n",dot(direction[i],direction[i]),direction[i].x,direction[i].y,direction[i].z,i);
-		displayBuffer[i].color.Set(fabs(direction[i].x), fabs(direction[i].y), fabs(direction[i].z),1);
+		displayBuffer[i].color.Set(fabs(init.x), fabs(init.y), fabs(init.z),1);
 	}
 	BirthAndDeath();
 	
@@ -319,8 +336,8 @@ void stokesianSolver::SetForce() {
 		//force[i].Set(0,0,0);
 
 		//boundary
-		//if (displayBuffer[i].pos.y < 0)
-		//	force[i].y += 0.5*(-(displayBuffer[i].pos.y)/deviceBuffer.displayscale);
+		if (displayBuffer[i].pos.y < 0)
+			force[i].y += 0.5*(-(displayBuffer[i].pos.y)/deviceBuffer.displayscale);
 	}
 
 	cudaMemcpy(deviceBuffer.cuForce, force, sizeof(cfloat3)*pointNum, cudaMemcpyHostToDevice);
