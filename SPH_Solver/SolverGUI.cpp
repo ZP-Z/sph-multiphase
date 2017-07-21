@@ -160,9 +160,7 @@ GLuint envid;
 
 
 
-
 //mint::Time nowTime;
-double dst;
 
 //void SolverGUI::draw2D()
 //{
@@ -264,53 +262,7 @@ int frame;
 
 
 
-void SolverGUI::render(){
 
-	if (!bPause) {
-		//psys->Run(window_width, window_height);
-		
-		stokesian->step();
-		frame++;
-		//measureFPS();
-	}
-
-	glEnable(GL_DEPTH_TEST);
-
-	glClearColor(0.4, 0.4, 0.4, 1);
-
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	//glDisable(GL_CULL_FACE);
-	//glEnable(GL_LIGHTING);
-
-	// Draw Particles
-	//drawScene(cam.getViewMatrix().GetDataF(), true);
-	//draw2D();
-	
-	//get Timer
-	camera.velMax = 100;
-
-
-	//Update Camera Position
-	clock_t Now = clock();
-	if (LastTime == 0)
-		LastTime = Now;
-
-	camera.AdvanceCamera( (float)(Now-LastTime)/1000.f);
-	ViewMatrix = camera.viewmat;
-	LastTime = Now;
-
-	//
-	//camera.MoveCamera(cfloat3(0.01,0,0));
-	
-	
-	DrawParticleSystem();
-	//DrawCube();
-
-	glutSwapBuffers();
-	glutPostRedisplay();
-
-}
 
 
 
@@ -333,7 +285,7 @@ void resize(int width, int height)
 
 void SolverGUI::ReSize(int width, int height) {
 
-	camera.SetProjParam(60, (float)width/height, 1.0f, 1000.0f);
+	camera.SetProjParam(40, (float)width/height, 1.0f, 1000.0f);
 	camera.ProjectionMat();
 
 	glUseProgram(shaders[0].programid);
@@ -595,85 +547,9 @@ void idle_func()
 #include "GL/freeglut.h"
 
 void Destroy() {
-	solverGUI.DestroyCube();
+	solverGUI.ReleaseGLBuffers();
 }
 
-void SolverGUI::Initialize(int argc, char** argv){
-	// Initialize CUDA
-	cudaInit(argc, argv);
-
-
-
-
-	// set up the window
-	glutInit(&argc, &argv[0]);
-
-	glutInitContextVersion(4,0);
-	glutInitContextFlags(GLUT_FORWARD_COMPATIBLE);
-	glutInitContextProfile(GLUT_CORE_PROFILE);
-
-	glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
-	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH |GLUT_MULTISAMPLE);
-	glutInitWindowSize((int)window_width, (int)window_height);
-	glutCreateWindow("Multiphase Nekobus");
-
-
-
-
-	// GL extensions
-	GLenum GlewInitResult = glewInit();
-	if (GLEW_OK != GlewInitResult) {
-		fprintf(stderr, "ERROR: %s\n", glewGetErrorString(GlewInitResult));
-		exit(EXIT_FAILURE);
-	}
-	fprintf(stdout, "INFO: OpenGL Version: %s\n", glGetString(GL_VERSION));
-
-
-
-
-	// callbacks
-	glutDisplayFunc(display);
-	glutReshapeFunc(resize);
-	glutCloseFunc(Destroy);
-
-	// keyboard
-	glutSetKeyRepeat(GLUT_KEY_REPEAT_OFF);
-	glutKeyboardFunc(keyboard_func);
-	glutKeyboardUpFunc(keyUpFunc);
-
-	glutMouseFunc(mouse_click_func);
-	glutMotionFunc(mouse_drag_func);
-	glutIdleFunc(idle_func);
-
-
-
-	//Camera Parameters
-	ModelMatrix = IDENTITY_MAT;
-	ProjectionMatrix = IDENTITY_MAT;
-	camera.forceup = cfloat3(0, 1, 0);
-	camera.lookat(cfloat3(0, 20, 20), cfloat3(0, 10, -40));
-	ViewMatrix = camera.viewmat;
-	
-
-
-	//Shaders & VAO, VBO
-	CreateParticleSystem();
-
-	
-
-	//Texture
-	int width,height;
-	unsigned char* image = SOIL_load_image("drop.png",&width,&height,0,SOIL_LOAD_RGBA);
-	GLuint texture;
-	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D,texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
-	glGenerateMipmap(GL_TEXTURE_2D);
-	SOIL_free_image_data(image);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-}
 
 
 //void SolverGUI::CreateCube(){
@@ -776,6 +652,9 @@ void SolverGUI::CreateShaders() {
 	ParticleSizeUniformLocation =		glGetUniformLocation(shaders[shaderId].programid, "particle_size");
 
 	ExitOnGLError("ERROR: Could not get the shader uniform locations");
+
+	glUseProgram(shaders[shaderId].programid);
+	ExitOnGLError("ERROR: Could not use the shader program");
 }
 
 void SolverGUI::CreateCubicShaders() {
@@ -802,10 +681,76 @@ void SolverGUI::CreateCubicShaders() {
 	ExitOnGLError("ERROR: Could not use the shader program");
 }
 
+void SolverGUI::CreateBoxShaders() {
+	shaderObject shader;
+	shader.loadShader("shader/box.vertex.glsl",GL_VERTEX_SHADER);
+	shader.loadShader("shader/box.fragment.glsl",GL_FRAGMENT_SHADER);
+	
+	ExitOnGLError("ERROR: Could not load shaders");
 
-void SolverGUI::CreateParticleSystem() {
+	shader.LinkProgram();
+	shaders.push_back(shader); //should be the second
+	
+	boxUniformLocation[0] =	glGetUniformLocation(shaders[1].programid, "ModelMatrix");
+	boxUniformLocation[1] =		glGetUniformLocation(shaders[1].programid, "ViewMatrix");
+	boxUniformLocation[2] =	glGetUniformLocation(shaders[1].programid, "ProjectionMatrix");
 
-	CreateCubicShaders();
+	ExitOnGLError("ERROR: Could not get the box shader uniform locations");
+}
+
+void SolverGUI::AllocateParticleVBO() {
+	glGenBuffers(1, &BufferIds[1]);
+	ExitOnGLError("ERROR: Could not generate the buffer objects");
+
+	glGenVertexArrays(1, &BufferIds[0]);
+	ExitOnGLError("ERROR: Could not generate the VAO");
+	glBindVertexArray(BufferIds[0]);
+	ExitOnGLError("ERROR: Could not bind the VAO");
+
+	glEnableVertexAttribArray(0);//pos
+	glEnableVertexAttribArray(1);//color
+
+	ExitOnGLError("ERROR: Could not enable vertex attributes");
+
+	maxPointNum = 20000; //100,000 needed for SPH
+	pointNum = 8;
+	glBindBuffer(GL_ARRAY_BUFFER, BufferIds[1]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(displayPack)*maxPointNum, NULL, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(displayPack), 0);
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(displayPack), (void*)sizeof(cfloat3));
+
+	glBindVertexArray(0);
+}
+
+void SolverGUI::AllocateBoxVBO() {
+	glGenVertexArrays(1, &GeoBufferIds[0]);
+	glBindVertexArray(GeoBufferIds[0]);
+	glGenBuffers(2,&GeoBufferIds[1]);
+	glEnableVertexAttribArray(0);//pos
+	glEnableVertexAttribArray(1);//color
+
+	GLuint index[]={
+		0,1, 1,2, 2,3, 3,0,
+		0,4, 1,5, 2,6, 3,7,
+		4,5, 5,6, 6,7, 7,4
+	};
+
+	//cube
+	glBindBuffer(GL_ARRAY_BUFFER, GeoBufferIds[1]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertex)*8, NULL, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), 0);
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)sizeof(cfloat3));
+	
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, GeoBufferIds[2]);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(index), index, GL_STATIC_DRAW);
+
+	glBindVertexArray(0);
+
+	
+}
+
+
+void SolverGUI::AllocateCubeVBO() {
 
 	glGenBuffers(2, &BufferIds[1]);
 	ExitOnGLError("ERROR: Could not generate the buffer objects");
@@ -838,16 +783,13 @@ void SolverGUI::CreateParticleSystem() {
 	glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(cmat4), (void*)(sizeof(cfloat4)*2));
 	glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(cmat4), (void*)(sizeof(cfloat4)*3));
 
-	glUseProgram(shaders[shaderId].programid);
-	ExitOnGLError("ERROR: Could not use shader program");
 	glBindVertexArray(0);
-
 
 }
 
 
 
-void SolverGUI::DestroyCube(){
+void SolverGUI::ReleaseGLBuffers(){
 	
 	for (int i=0; i<shaders.size(); i++) {
 		shaders[i].Release();
@@ -856,6 +798,9 @@ void SolverGUI::DestroyCube(){
 	glDeleteBuffers(1, &BufferIds[1]);
 	glDeleteVertexArrays(1, &BufferIds[0]);
 	ExitOnGLError("ERROR: Could not destroy the buffer objects");
+
+	glDeleteTextures(1, textures);
+
 }
 
 
@@ -871,10 +816,8 @@ void SolverGUI::DrawParticleSystem(){
 
 	glUniformMatrix4fv(ModelMatrixUniformLocation, 1, GL_FALSE, ModelMatrix.data);
 	glUniformMatrix4fv(ViewMatrixUniformLocation, 1, GL_FALSE, ViewMatrix.data);
-	
 	glUniformMatrix4fv(ProjectionMatrixUniformLocation, 1, GL_FALSE, camera.projmat.data);
-	
-	glUniform1f(ParticleSizeUniformLocation, 0.5f);
+	glUniform1f(ParticleSizeUniformLocation, 1.0f);
 	ExitOnGLError("ERROR: Could not set the shader uniforms");
 
 	glBindVertexArray(BufferIds[0]);
@@ -885,13 +828,57 @@ void SolverGUI::DrawParticleSystem(){
 	glBufferData(GL_ARRAY_BUFFER, sizeof(displayPack)*maxPointNum, NULL,GL_STATIC_DRAW);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(displayPack)*(*pnum), dispBuffer);
 
-	glBindBuffer(GL_ARRAY_BUFFER, BufferIds[2]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(cmat4)*maxPointNum, NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(cmat4)*(*pnum), stokesian->rotationMat);
 
 	glDrawArrays(GL_POINTS, 0, *pnum);
 	ExitOnGLError("ERROR: Could not draw the Particle System");
 
+	glBindVertexArray(0);
+	glUseProgram(0);
+}
+
+void SolverGUI::DrawParticleSystem_Cube() {
+
+	ModelMatrix = IDENTITY_MAT;
+
+	glUseProgram(shaders[shaderId].programid);
+	ExitOnGLError("ERROR: Could not use the shader program");
+
+	glUniformMatrix4fv(ModelMatrixUniformLocation, 1, GL_FALSE, ModelMatrix.data);
+	glUniformMatrix4fv(ViewMatrixUniformLocation, 1, GL_FALSE, ViewMatrix.data);
+	glUniformMatrix4fv(ProjectionMatrixUniformLocation, 1, GL_FALSE, camera.projmat.data);
+	glUniform1f(ParticleSizeUniformLocation, 0.5f);
+	ExitOnGLError("ERROR: Could not set the shader uniforms");
+
+	glBindVertexArray(BufferIds[0]);
+	ExitOnGLError("ERROR: Could not bind the VAO for drawing purposes");
+
+	//Update Particle Data
+	glBindBuffer(GL_ARRAY_BUFFER, BufferIds[1]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(displayPack)*maxPointNum, NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(displayPack)*(*pnum), dispBuffer);
+
+	glBindBuffer(GL_ARRAY_BUFFER, BufferIds[2]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(cmat4)*maxPointNum, NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(cmat4)*(*pnum), rotationBuffer);
+
+	glDrawArrays(GL_POINTS, 0, *pnum);
+	ExitOnGLError("ERROR: Could not draw the Particle System");
+
+	glBindVertexArray(0);
+	glUseProgram(0);
+}
+
+void SolverGUI::DrawBox() {
+	glUseProgram(shaders[1].programid);
+	glUniformMatrix4fv(boxUniformLocation[0], 1, GL_FALSE, ModelMatrix.data);
+	glUniformMatrix4fv(boxUniformLocation[1], 1, GL_FALSE, ViewMatrix.data);
+	glUniformMatrix4fv(boxUniformLocation[2], 1, GL_FALSE, camera.projmat.data);
+
+	glBindVertexArray(GeoBufferIds[0]);
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, GeoBufferIds[2]);
+	glPointSize(10.0f);
+	//glDrawArrays(GL_POINTS, 0,8);
+	glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, (GLvoid*)0);
 	glBindVertexArray(0);
 	glUseProgram(0);
 }
@@ -934,21 +921,177 @@ void SolverGUI::DrawParticleSystem(){
 
 
 
+void SolverGUI::Initialize(int argc, char** argv) {
+	// Initialize CUDA
+	cudaInit(argc, argv);
 
 
 
-void SolverGUI::SetupSolver(){
-	//psys = new FluidSystem();
-	//psys->Setup(true);
+
+	// set up the window
+	glutInit(&argc, &argv[0]);
+
+	glutInitContextVersion(4, 0);
+	glutInitContextFlags(GLUT_FORWARD_COMPATIBLE);
+	glutInitContextProfile(GLUT_CORE_PROFILE);
+
+	glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
+	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH |GLUT_MULTISAMPLE);
+	glutInitWindowSize((int)window_width, (int)window_height);
+	glutCreateWindow("Multiphase Nekobus");
+
+
+
+
+	// GL extensions
+	GLenum GlewInitResult = glewInit();
+	if (GLEW_OK != GlewInitResult) {
+		fprintf(stderr, "ERROR: %s\n", glewGetErrorString(GlewInitResult));
+		exit(EXIT_FAILURE);
+	}
+	fprintf(stdout, "INFO: OpenGL Version: %s\n", glGetString(GL_VERSION));
+
+
+
+
+	// callbacks
+	glutDisplayFunc(display);
+	glutReshapeFunc(resize);
+	glutCloseFunc(Destroy);
+
+	// keyboard
+	glutSetKeyRepeat(GLUT_KEY_REPEAT_OFF);
+	glutKeyboardFunc(keyboard_func);
+	glutKeyboardUpFunc(keyUpFunc);
+
+	glutMouseFunc(mouse_click_func);
+	glutMotionFunc(mouse_drag_func);
+	glutIdleFunc(idle_func);
+
+
+
+	//Camera Parameters
+	ModelMatrix = IDENTITY_MAT;
+	ProjectionMatrix = IDENTITY_MAT;
+	camera.forceup = cfloat3(0, 1, 0);
+	camera.lookat(cfloat3(0, 40, 80), cfloat3(0, 40, -80));
+	ViewMatrix = camera.viewmat;
+
+
+	rendermode = PARTICLE_RENDERER;
+	switch (rendermode) {
+	case PARTICLE_RENDERER:
+		CreateShaders();
+		AllocateParticleVBO();
+		break;
+	case CUBE_RENDERER:
+		CreateCubicShaders();
+		AllocateCubeVBO();
+		break;
+	}
 	
-	stokesian = new stokesianSolver();
-	stokesian->SetupSolver();
-	pnum = &stokesian->pointNum;
-	dispBuffer = stokesian->displayBuffer;
+	CreateBoxShaders();
+	AllocateBoxVBO();
+	
+
+	//Texture
+
+	if(rendermode==PARTICLE_RENDERER){
+		int width, height;
+		unsigned char* image = SOIL_load_image("drop.png", &width, &height, 0, SOIL_LOAD_RGBA);
+		glGenTextures(1, textures);
+		glBindTexture(GL_TEXTURE_2D, textures[0]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
+		glGenerateMipmap(GL_TEXTURE_2D);
+		SOIL_free_image_data(image);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	}
+
 }
 
 
 
+void SolverGUI::SetupSolver(){
+	psys = new FluidSystem();
+	psys->Setup(true);
+	pnum = & psys->pointNum;
+	dispBuffer = psys->displayBuffer;
+	
+	/*stokesian = new stokesianSolver();
+	stokesian->SetupSolver();
+	pnum = &stokesian->pointNum;
+	dispBuffer = stokesian->displayBuffer;
+	rotationBuffer = stokesian->rotationMat;*/
+
+	GetBoundingBox();
+}
+
+void SolverGUI::GetBoundingBox() {
+	//hard code
+	cfloat3 min(-20,0,-20), max(20,50,20);
+	boundingBox[0].pos.Set(min.x,max.y,min.z);
+	boundingBox[1].pos.Set(max.x,max.y,min.z);
+	boundingBox[2].pos.Set(max.x,max.y,max.z);
+	boundingBox[3].pos.Set(min.x,max.y,max.z);
+
+	boundingBox[4].pos.Set(min.x, min.y, min.z);
+	boundingBox[5].pos.Set(max.x, min.y, min.z);
+	boundingBox[6].pos.Set(max.x, min.y, max.z);
+	boundingBox[7].pos.Set(min.x, min.y, max.z);
+
+	for(int i=0;i<8;i++)
+		boundingBox[i].color.Set(0.6,0.6,0.6,1);
+
+	glBindVertexArray(GeoBufferIds[0]);
+	glBindBuffer(GL_ARRAY_BUFFER, GeoBufferIds[1]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(boundingBox), boundingBox, GL_STATIC_DRAW);
+	glBindVertexArray(0);
+}
+
+
+void SolverGUI::render() {
+
+	if (!bPause) {
+		psys->Run(window_width, window_height);
+
+		//stokesian->step();
+		frame++;
+		//measureFPS();
+	}
+
+	glEnable(GL_DEPTH_TEST);
+	glClearColor(0.4, 0.4, 0.4, 1);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	//draw2D();
+	
+	clock_t Now = clock();
+	if (LastTime == 0)
+		LastTime = Now;
+
+
+	//Update Camera Position
+	camera.velMax = 100;
+	camera.AdvanceCamera((float)(Now-LastTime)/1000.f);
+	ViewMatrix = camera.viewmat;
+	LastTime = Now;
+
+	switch (rendermode) {
+	case PARTICLE_RENDERER:
+		DrawParticleSystem();
+		break;
+	case CUBE_RENDERER:
+		DrawParticleSystem_Cube();
+		break;
+	}
+
+	DrawBox();
+	
+	glutSwapBuffers();
+	glutPostRedisplay();
+
+}
 
 
 void SolverGUI::Run(){
@@ -960,8 +1103,8 @@ void SolverGUI::Run(){
 
 
 void SolverGUI::Exit(){
-	//psys->Exit();
-	//delete psys;
+	psys->Exit();
+	delete psys;
 
-	delete stokesian;
+	//delete stokesian;
 }

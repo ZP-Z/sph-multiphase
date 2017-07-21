@@ -27,11 +27,11 @@
 	<FluidCount> 3 </FluidCount>
 	<!--VolMin0>		 30, 2, 30	</VolMin0>
 	<VolMax0>		 55, 20,  55	</VolMax0-->
-	<SoftBoundMin>	-35, 0, -35 </SoftBoundMin>
-	<SoftBoundMax>	 35, 180, 35 </SoftBoundMax>
+	<SoftBoundMin>	-20, 0, -20 </SoftBoundMin>
+	<SoftBoundMax>	 20, 180, 20 </SoftBoundMax>
 	
     <VolMin0>		 -10,   5, -10	</VolMin0>
-	<VolMax0>		  10,  30,  10	</VolMax0>
+	<VolMax0>		  10,  80,  10	</VolMax0>
 
 	<VolMin1>		 -20, 12, -10	</VolMin1>
 	<VolMax1>		  -2, 32,  10	</VolMax1>

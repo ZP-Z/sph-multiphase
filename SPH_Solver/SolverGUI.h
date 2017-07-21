@@ -20,15 +20,18 @@ struct vertex {
 
 typedef std::vector<vertex> varray;
 
+
+
+
 class shaderObject {
 public:
 	GLuint programid;
 	GLuint shaderid[3];//vertex, geometry, fragment
 	shaderObject() {
 		programid = glCreateProgram();
-		shaderid[0] = -1;
-		shaderid[1] = -1;
-		shaderid[2] = -1;
+		shaderid[0] = 0;
+		shaderid[1] = 0;
+		shaderid[2] = 0;
 	}
 	
 	void Release() {
@@ -66,10 +69,15 @@ public:
 	}
 };
 
+
+#define PARTICLE_RENDERER 0
+#define CUBE_RENDERER 1
+
 class SolverGUI{
 
 public:
 	void SetupSolver();
+	void GetBoundingBox();
 
 	void Run();
 
@@ -90,29 +98,46 @@ public:
 
 	void Initialize(int argc,char** argv);
 	
-	void CreateCube(void);
-	void DestroyCube(void);
-	void DrawCube(void);
+	//void CreateCube(void);
+
+	void ReleaseGLBuffers(void);
+	//void DrawCube(void);
 	void ReSize(int width,int height);
 
 	void CreateShaders();
 	void CreateCubicShaders();
+	
 
 	void DrawParticleSystem();
-	void CreateParticleSystem();
+	void DrawParticleSystem_Cube();
+
+	void AllocateParticleVBO();
+	void AllocateCubeVBO();
+
+	void AllocateBoxVBO();
+	void CreateBoxShaders();
+	void DrawBox();
 
 	//rendering particles
 	GLuint ProjectionMatrixUniformLocation,
 		ViewMatrixUniformLocation,
 		ModelMatrixUniformLocation,
 		ParticleSizeUniformLocation;
+
+	GLuint boxUniformLocation[3];//model-matrix, view-matrix, projection-matrix
 		
-	GLuint ShaderIds[4]; //program, vertex, geometry, fragment
-	GLuint BufferIds[3];
+	
+	GLuint BufferIds[3];   //vao, vbo-(pos,color), vbo-(rotation)
+	GLuint GeoBufferIds[3];//vao, vbo-(pos,color), indexbuffer
+
+	//textures
+	GLuint textures[10];
+
 
 	//rendering simple geometry
-	GLuint SimpleGeoShader[3]; //0-program, 1-vertex, 2-fragment
 	varray planeGrid;
+	vertex boundingBox[8];
+
 
 	cmat4 ProjectionMatrix,
 		ViewMatrix,
@@ -127,8 +152,10 @@ public:
 	//buffer bindings
 	displayPack* dispBuffer;
 	int* pnum;
+	cmat4* rotationBuffer;
 
 
+	//shaders
 	vector<shaderObject> shaders;
 
 
@@ -138,4 +165,6 @@ public:
 
 	int maxPointNum;
 	int pointNum;
+
+	int rendermode;
 };
