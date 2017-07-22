@@ -9,7 +9,7 @@
 </Fluid>
 
 <MultiScene id="2">
-	<Num> 20000 </Num>
+	<Num> 100000 </Num>
 	<SimScale>		0.005		</SimScale>
 	<Name>		Test 	</Name>
 	<DT>			0.0005 </DT>
@@ -31,7 +31,7 @@
 	<SoftBoundMax>	 20, 180, 20 </SoftBoundMax>
 	
     <VolMin0>		 -10,   5, -10	</VolMin0>
-	<VolMax0>		  10,  80,  10	</VolMax0>
+	<VolMax0>		  10,  5,  10	</VolMax0>
 
 	<VolMin1>		 -20, 12, -10	</VolMin1>
 	<VolMax1>		  -2, 32,  10	</VolMax1>

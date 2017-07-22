@@ -37,7 +37,7 @@ public:
 	FluidSystem ();
 
 	// Setup
-	void Setup ( bool bStart );
+	void Setup ();
 		
 	void ResetParameters ();
 	void ParseXML();
@@ -52,7 +52,9 @@ public:
 	//Manipulating particles
 	void AllocateParticles(int cnt);
 	int AddParticle();
-	void InsertParticles(std::vector<cfloat3> plist,
+	void InsertParticles(
+		ParticleEmitter& emitter,
+		std::vector<cfloat3> plist,
 		int cat);
 
 	void saveParticle(std::string name);
@@ -84,7 +86,7 @@ public:
 	//void TransferToCUDA();
 	//void TransferFromCUDA();
 	//void TransferFromCUDAForLoad();
-	void EmitUpdateCUDA(int startnum, int endnum);
+	void EmitUpdateCUDA(int startnum, int endnum, bufList& fbuf);
 	void TransferToCUDA(bufList& fbuf);
 	void TransferFromCUDA(bufList& fbuf);
 

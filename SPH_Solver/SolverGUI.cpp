@@ -407,6 +407,10 @@ void SolverGUI::keyDown(unsigned char key){
 
 	case '`':				
 		psys->bSnapshot = ! psys->bSnapshot;
+		if(psys->bSnapshot)
+			printf("taking snapshot\n");
+		else
+			printf("stop taking snapshot\n");
 		break;
 
 		//case 't': case 'T':		psys->Setup(true); break;
@@ -824,6 +828,9 @@ void SolverGUI::DrawParticleSystem(){
 	ExitOnGLError("ERROR: Could not bind the VAO for drawing purposes");
 
 	//Update Particle Data
+	if(maxPointNum <*pnum)
+		maxPointNum = *pnum;
+
 	glBindBuffer(GL_ARRAY_BUFFER, BufferIds[1]);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(displayPack)*maxPointNum, NULL,GL_STATIC_DRAW);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(displayPack)*(*pnum), dispBuffer);
@@ -1014,7 +1021,7 @@ void SolverGUI::Initialize(int argc, char** argv) {
 
 void SolverGUI::SetupSolver(){
 	psys = new FluidSystem();
-	psys->Setup(true);
+	psys->Setup();
 	pnum = & psys->pointNum;
 	dispBuffer = psys->displayBuffer;
 	

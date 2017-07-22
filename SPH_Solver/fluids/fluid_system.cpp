@@ -15,14 +15,14 @@ int example = 2;
 float unitMatrix[9] = {1,0,0,    0,1,0,     0,0,1};
 
 extern bufList	fbuf;
-
+extern FluidParams		fcuda;
 
 FluidSystem::FluidSystem ()
 {
 }
 
 
-void FluidSystem::Setup ( bool bStart )
+void FluidSystem::Setup ()
 {
 	
 	ResetParameters();
@@ -439,6 +439,11 @@ void FluidSystem::Run (int width, int height)
 		CaptureVideo ( width, height );
 	}
 
+	//if (frameNo==20) {
+	EmitParticles(2);
+		
+	//}
+
 	//if ( frameNo % framespacing ==0 ){
 	//	outputFile();
 	//}
@@ -477,7 +482,7 @@ void FluidSystem::RunSimpleSPH() {
 
 void FluidSystem::EmitParticles (int cat)
 {
-	int emitInterval = 20;
+	int emitInterval = 22;
 	int oldPointNum = pointNum;
     if (pointNum == maxPointNum)
         return;
@@ -486,16 +491,18 @@ void FluidSystem::EmitParticles (int cat)
 	if (  frameNo % emitInterval == 0 ) {
 		ParticleEmitter emitter;
 		emitter.dir.Set(0,-1,0);
-		emitter.position.Set(0,100,0);
-		emitter.vel = 5;
-		emitter.radius = 10;
+		emitter.position.Set(0,50,0);
+		emitter.vel = 1;
+		emitter.radius = 6;
 		emitter.spacing = pSpacing;
 		emitter.EmitImmediate(plist);
 
-		InsertParticles(plist, cat);
-	}
+		emitter.position.Set(0, 50+pSpacing, 0);
+		emitter.EmitImmediate(plist);
 
-	EmitUpdateCUDA(oldPointNum,pointNum);
+		InsertParticles(emitter, plist, cat);
+		EmitUpdateCUDA(oldPointNum, pointNum, fbuf);
+	}
 }
 
 
@@ -520,7 +527,14 @@ void ParticleEmitter::EmitImmediate(std::vector<cfloat3>& plist){
 	int res = radius / spacing;
 	for(int i=-res; i<=res; i++){
 		for(int j=-res;j<=res;j++){
+
+			cfloat3 rand3(rand(), rand(), rand());
+			rand3 = rand3/RAND_MAX*spacing - spacing*0.5;
+
 			cfloat3 tmp( i*spacing, 0, j*spacing);
+			rand3.y = 0;
+			tmp += rand3;
+
 			if( dot(tmp,tmp)>radius*radius)
 				continue;
 			mvprod(rotationMat, tmp, tmp);
@@ -529,11 +543,73 @@ void ParticleEmitter::EmitImmediate(std::vector<cfloat3>& plist){
 		}
 	}
 }
-void FluidSystem::InsertParticles(std::vector<cfloat3> plist, int cat){
+void FluidSystem::InsertParticles(ParticleEmitter& emitter, std::vector<cfloat3> plist, int cat){
 	for(int i=0; i<plist.size();i++){
 		int p = AddParticle();
+		if(p<0)
+			break;
+		
+		displayBuffer[p].pos = plist[i];
+		//displayBuffer[p].color.Set((float)rand()/RAND_MAX, (float)rand()/RAND_MAX, (float)rand()/RAND_MAX,1.0);
+		displayBuffer[p].color.Set(frameNo/200.0, 0.5, 0.8, 0.5);
+		displayBuffer[p].type = 0;
 
+		calculationBuffer[p].vel = emitter.dir * emitter.vel;
+		calculationBuffer[p].veleval = emitter.dir * emitter.vel;
+		calculationBuffer[p].restdens = hostCarrier.densArr[cat];
+		calculationBuffer[p].mass = hostCarrier.massArr[cat];
+		calculationBuffer[p].visc = hostCarrier.viscArr[cat];
 	}
+}
+
+int FluidSystem::AddParticle()
+{
+	if (pointNum >= maxPointNum) return -1;
+	int n = pointNum;
+
+	calculationBuffer[n].vel.Set(0, 0, 0);
+	calculationBuffer[n].veleval.Set(0, 0, 0);
+	calculationBuffer[n].bornid = n;
+
+	pointNum++;
+	return n;
+}
+
+void FluidSystem::SetupMfAddVolume(cfloat3 min, cfloat3 max, float spacing, cfloat3 offs, int cat)
+{
+	if (pointNum==maxPointNum)
+		printf("Max pointnum reached.\n");
+
+	cfloat3 pos;
+	int n = 0, p;
+	int cntx, cnty, cntz;
+	cfloat3 cnts = (max - min) / spacing;
+
+	float randx[3];
+	float ranlen = 0.2;
+
+	for (int y = 0; y < cnts.y; y ++) {
+		for (int z=0; z < cnts.z; z++) {
+			for (int x=0; x < cnts.x; x++) {
+				cfloat3 rand3(rand(), rand(), rand());
+				rand3 = rand3/RAND_MAX*ranlen - ranlen*0.5;
+				pos = cfloat3(x, y, z)*spacing + min + rand3;
+
+				p = AddParticle();
+				if (p >= 0) {
+					displayBuffer[p].pos = pos;
+					//displayBuffer[p].color.Set((float)rand()/RAND_MAX, (float)rand()/RAND_MAX, (float)rand()/RAND_MAX,1.0);
+					displayBuffer[p].color.Set(0.2, 0.5, 0.8, 0.5);
+					displayBuffer[p].type = 0;
+
+					calculationBuffer[p].restdens = hostCarrier.densArr[cat];
+					calculationBuffer[p].mass = hostCarrier.massArr[cat];
+					calculationBuffer[p].visc = hostCarrier.viscArr[cat];
+				}
+			}
+		}
+	}
+	printf("%d fluid has %d particles\n", cat, n);
 }
 
 using namespace tinyxml2;
@@ -590,6 +666,7 @@ void FluidSystem::ParseXML(){
 	XMLGetFloatN(densratio,3,"DensityRatio");
 	XMLGetFloatN(viscratio, 3, "ViscRatio");
 
+	hostCarrier.maxNum = maxPointNum;
 	hostCarrier.simscale = XMLGetFloat("SimScale");
 	hostCarrier.dt = XMLGetFloat("DT");
 	hostCarrier.smoothradius = XMLGetFloat("SmoothRadius");
@@ -614,4 +691,17 @@ void FluidSystem::TransferFromCUDA(bufList& fbuf) {
 	cudaMemcpy( displayBuffer, fbuf.displayBuffer, sizeof(displayPack)*pointNum, cudaMemcpyDeviceToHost);
 	//cudaMemcpy( calculationBuffer, fbuf.calcBuffer, sizeof(calculationPack)*pointNum, cudaMemcpyDeviceToHost);
 	//cudaMemcpy(intmBuffer, fbuf.intmBuffer, sizeof(IntermediatePack)*pointNum, cudaMemcpyDeviceToHost);
+}
+
+
+void FluidSystem::EmitUpdateCUDA(int startnum, int endnum, bufList& fbuf)
+{
+	cudaMemcpy(fbuf.displayBuffer+startnum, displayBuffer+startnum, sizeof(displayPack)*(endnum-startnum), cudaMemcpyHostToDevice);
+	cudaMemcpy(fbuf.calcBuffer+startnum, calculationBuffer+startnum, sizeof(calculationPack)*(endnum-startnum), cudaMemcpyHostToDevice);
+
+	hostCarrier.num = pointNum;
+	CarryParam(hostCarrier);
+	fcuda.pnum = pointNum;
+	computeNumBlocks(fcuda.pnum, 384, fcuda.numBlocks, fcuda.numThreads);
+	updateParam(&fcuda);
 }

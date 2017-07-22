@@ -43,6 +43,7 @@ struct ParamCarrier {
 
 	//case
 	int num;
+	int maxNum;
 	float dt;
 	float simscale;
 

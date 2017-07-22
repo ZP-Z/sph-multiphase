@@ -6,55 +6,7 @@
 #include "fluid_system.h"
 #include "fluid_system_host.cuh"
 
-int FluidSystem::AddParticle ()
-{
-	if ( pointNum >= maxPointNum ) return -1;
-	int n = pointNum;
 
-	calculationBuffer[n].vel.Set(0,0,0);
-	calculationBuffer[n].veleval.Set(0,0,0);
-	calculationBuffer[n].bornid = n;
-
-	pointNum++;
-	return n;
-}
-
-void FluidSystem::SetupMfAddVolume ( cfloat3 min, cfloat3 max, float spacing, cfloat3 offs, int cat )
-{
-	if(pointNum==maxPointNum)
-		printf("Max pointnum reached.\n");
-
-	cfloat3 pos;
-	int n = 0, p;
-	int cntx, cnty, cntz;
-	cfloat3 cnts = (max - min) / spacing;
-
-	float randx[3];
-	float ranlen = 0.2;
-
-	for (int y = 0; y < cnts.y; y ++ ) {	
-		for(int z=0; z < cnts.z; z++){
-			for (int x=0; x < cnts.x; x++) {
-				cfloat3 rand3(rand(), rand(), rand());
-				rand3 = rand3/RAND_MAX*ranlen - ranlen*0.5;
-				pos = cfloat3(x,y,z)*spacing + min + rand3;
-				
-				p = AddParticle();
-				if(p >= 0){
-					displayBuffer[p].pos = pos;
-					//displayBuffer[p].color.Set((float)rand()/RAND_MAX, (float)rand()/RAND_MAX, (float)rand()/RAND_MAX,1.0);
-					displayBuffer[p].color.Set(0.2, 0.5, 0.8, 0.5);
-					displayBuffer[p].type = 0;
-
-					calculationBuffer[p].restdens = hostCarrier.densArr[cat];
-					calculationBuffer[p].mass = hostCarrier.massArr[cat];
-					calculationBuffer[p].visc = hostCarrier.viscArr[cat];
-				}
-			}
-		}
-	}	
-	printf("%d fluid has %d particles\n",cat,n);
-}
 
 void FluidSystem::SetupAddBubble(cfloat3 min, cfloat3 max, float spacing, int constitution){
    /* cfloat3 pos;

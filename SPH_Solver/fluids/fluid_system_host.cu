@@ -129,8 +129,9 @@ void FluidSetupCUDA(ParamCarrier& params){
 
 
 	// Allocate particle buffers
-	fcuda.szPnts = (fcuda.numBlocks  * fcuda.numThreads);
-	
+	//fcuda.szPnts = (fcuda.numBlocks  * fcuda.numThreads);
+	fcuda.szPnts = params.maxNum;
+
 	cudaMalloc(&fbuf.displayBuffer, EMIT_BUF_RATIO * fcuda.szPnts * sizeof(displayPack));
 	cudaMalloc(&fbuf.calcBuffer,	EMIT_BUF_RATIO*fcuda.szPnts*sizeof(calculationPack));
 	cudaMalloc(&fbuf.intmBuffer,	EMIT_BUF_RATIO*fcuda.szPnts*sizeof(IntermediatePack));
@@ -342,7 +343,6 @@ void FluidParamCUDA (ParamCarrier& params){
 	}*/
 
 	updateParam(&fcuda);
-	cudaThreadSynchronize();
 }
 
 void FluidParamCUDAbuffer_projectu(float* buffer){
@@ -480,7 +480,7 @@ void CountingSortFullCUDA_( uint* ggrid )
 	
 	cudaMemcpy ( fbuf.msortbuf + n*BUF_DISPLAYBUF, fbuf.displayBuffer, n*sizeof(displayPack), cudaMemcpyDeviceToDevice);
 	cudaMemcpy(fbuf.msortbuf + n*BUF_CALCBUF, fbuf.calcBuffer, n*sizeof(calculationPack), cudaMemcpyDeviceToDevice);
-	cudaMemcpy(fbuf.msortbuf + n*BUF_INTMBUF, fbuf.intmBuffer, n*sizeof(IntermediatePack), cudaMemcpyDeviceToDevice);
+	//cudaMemcpy(fbuf.msortbuf + n*BUF_INTMBUF, fbuf.intmBuffer, n*sizeof(IntermediatePack), cudaMemcpyDeviceToDevice);
 
 	// Counting Sort - pass one, determine grid counts
 	error = cudaGetLastError();

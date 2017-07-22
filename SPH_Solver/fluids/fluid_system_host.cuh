@@ -112,5 +112,7 @@
 
 	void ComputeSolidTensor();
 	void ComputeSolidForce();
+
+	void computeNumBlocks(int numPnts, int maxThreads, int &numBlocks, int &numThreads);
 	}
 #endif
