@@ -12,7 +12,7 @@
 	<Num> 100000 </Num>
 	<SimScale>		0.005		</SimScale>
 	<Name>		Test 	</Name>
-	<DT>			0.0001 </DT>
+	<DT>			0.0002 </DT>
 	<Radius> 0.01 </Radius>
 	<SmoothRadius> 0.015 </SmoothRadius>
 	<Viscosity>	 1.0		</Viscosity>
@@ -63,9 +63,9 @@
 </MultiScene>
 
 <BoundInfo id="1">
-	<Viscosity>	1.0		</Viscosity>
+	<Viscosity>	100.0		</Viscosity>
 	<RestDensity>	600.0		</RestDensity>
-	<Mass>		0.00020543	</Mass>
+	<Mass>		0.00010543	</Mass>
 	<BoundStiff>	5000	</BoundStiff>
 </BoundInfo>
 

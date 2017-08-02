@@ -344,7 +344,7 @@ __device__ cfloat3 contributeForce_new(int i, cfloat3 ipos, cfloat3 iveleval, fl
 	//Force here represents the acceleration
 	float dsq, c;
 	register float d2 = simData.psimscale * simData.psimscale;
-	register float r2 = simData.r2/d2;
+	register float r2 = simData.r2;
 
 	cfloat3 dist, vmr;
 	float cmterm, cmterm1;
@@ -364,15 +364,15 @@ __device__ cfloat3 contributeForce_new(int i, cfloat3 ipos, cfloat3 iveleval, fl
 	for (int j = cfirst; j < clast; j++) {
 		
 
-		dist = (ipos - buf.displayBuffer[j].pos);		
-		dsq = (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z);
+		dist = (ipos - buf.displayBuffer[j].pos);
 		dist *= simData.psimscale;
-
+		dsq = (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z);
+		
 		if (!(dsq < r2 && dsq > 0))
 			continue;
 
-		cx = (r2-dsq)*d2;
-		dsq = sqrt(dsq*d2);
+		cx = (r2-dsq);
+		dsq = sqrt(dsq);
 		c = (simData.psmoothradius - dsq);
 
 		cmterm1 = simData.spikykern * c * c / dsq; //nabla W
@@ -402,15 +402,15 @@ __device__ cfloat3 contributeForce_new(int i, cfloat3 ipos, cfloat3 iveleval, fl
 			//vmterm = cmterm * (ivisc+buf.mf_visc[j]) * idens;
 			//force += vmterm * vmr;
 		//		
-		//	//artificial boundary viscosity			
-		//	vmr = iveleval - buf.mveleval[j];
-		//	float pi_ij = vmr.x*dist.x + vmr.y*dist.y + vmr.z*dist.z;
-		//	if (pi_ij < 0) {
-		//		pi_ij = pi_ij / (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z + r2 * 0.01);
-		//		pi_ij = pi_ij * 2 * simData.psmoothradius * (ivisc + buf.mf_visc[j]) * idens /2;
-		//		pi_ij = - cmterm1 * buf.mf_restdensity[i] * buf.mdensity[j] * pi_ij;
-		//		force += (pi_ij * dist * simData.visc_factor);
-		//	}
+			//artificial boundary viscosity			
+			vmr = iveleval - buf.calcBuffer[j].veleval;
+			float pi_ij = vmr.x*dist.x + vmr.y*dist.y + vmr.z*dist.z;
+			if (pi_ij < 0) {
+				pi_ij = pi_ij / (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z + r2 * 0.01);
+				pi_ij = pi_ij * paramCarrier.bvisc * simData.psmoothradius  /2 / buf.calcBuffer[i].restdens ;
+				pi_ij = cmterm1 * buf.calcBuffer[i].restdens * buf.calcBuffer[j].dens * pi_ij;
+				force += (dist * pi_ij);
+			}
 		}
 		
 	}

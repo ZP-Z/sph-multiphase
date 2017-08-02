@@ -335,11 +335,7 @@ void FluidSystem::SetupAddWall(cfloat3 min, cfloat3 max){
 			p = AddParticle ();
 			if ( p != -1 ) {
 				n++;
-				/*
-				randx[0] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
-				randx[1] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
-				randx[2] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
-				*/
+
 				displayBuffer[p].pos.Set( x,y,z);
 				if(z>0)
 					displayBuffer[p].color.Set(1,1,1,0);
