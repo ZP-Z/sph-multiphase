@@ -1,6 +1,6 @@
 <param>
 	<pnum> 20000</pnum>
-	<dt>0.01</dt>
-	<gravity>0,-2,0</gravity>
-	<displayscale> 0.1 </displayscale>
+	<dt>0.0005</dt>
+	<gravity>0,-0.05,0</gravity>
+	<simscale> 1 </simscale>
 </param>

@@ -1,7 +1,0 @@
-20000	#nsphr
-0.01	#dt
--2	#gravity
-
-100.0		#Sort Grid Cell Size
--1080.0 -1080.0 -180.0   #Sort Grid Xmin
-1080.0  1080.0  1160.0   #Sort Grid Xmin

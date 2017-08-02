@@ -45,7 +45,6 @@ inline float dot(cfloat2& a, cfloat2& b) {
 	return a.x*b.x + a.y*b.y;
 }
 
-
 struct cfloat3 {
 	float x, y, z;
 	HDFUNC cfloat3() {}
@@ -99,6 +98,7 @@ struct cfloat3 {
 	HDFUNC float minx() {
 		return cmin(x, cmin(y, z));
 	}
+
 };
 
 HDFUNC inline cfloat3 minfilter(cfloat3 a, cfloat3 b) {
@@ -127,6 +127,13 @@ struct cint3 {
 	}
 	HDFUNC operator cfloat3(){
 		return cfloat3(x,y,z);
+	}
+
+	HDFUNC int prod() {
+		return x*y*z;
+	}
+	HDFUNC cint3 operator + (cint3& b) {
+		return cint3(x+b.x, y+b.y, z+b.z);
 	}
 };
 
@@ -189,12 +196,12 @@ struct cvertex{
 
 struct cfloat4{
 	float x,y,z,w;
-	void Set(float _x,float _y,float _z,float _w){
+	HDFUNC void Set(float _x,float _y,float _z,float _w){
 		x=_x; y=_y; z=_z; w=_w;
 	}
-	cfloat4():
+	HDFUNC cfloat4():
 		x(0),y(0),z(0),w(0){}
-	cfloat4(float _x, float _y, float _z, float _w):
+	HDFUNC cfloat4(float _x, float _y, float _z, float _w):
 		x(_x),y(_y),z(_z),w(_w){}
 };
 

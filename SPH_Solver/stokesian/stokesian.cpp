@@ -72,41 +72,49 @@ void stokesianSolver::InjectWater(){
 		return;
 	}
 
-	if (frameNo % 50 != 0)
+	if (frameNo % 22 != 0)
 		return;
 	//printf("inject at turn %d\n", frameNo);
-	int layernum = 100;
-	int roughsqrt = sqrt(layernum);
-	float spacing = 8;
-	float xmin = 0 - roughsqrt*spacing/2;
-	float zmin = 0 - roughsqrt*spacing/2;
+	float emitradius = 5;
+	float spacing = 2;
+
+	int res = emitradius/spacing;
 
 	int startnum = pointNum;
 
-	float displayscale = deviceBuffer.displayscale;
+	for (int i=-res; i<=res; i++) {
+		for (int j=-res; j<=res; j++) {
+			
+			if (pointNum == maxAllowNum) {
+				break;
+			}
 
-	for (int i=0; i<layernum; i++) {
-		if(pointNum == maxAllowNum){
-			break;
+			int x = i*spacing;
+			int z = j*spacing;
+			cfloat3 rand3((float)rand()/RAND_MAX, (float)rand()/RAND_MAX,(float)rand()/RAND_MAX);
+			rand3 = rand3*spacing/4 - spacing/8;
+
+			displayBuffer[pointNum].pos.Set(x, 50, z);
+			displayBuffer[pointNum].pos += rand3;
+
+			displayBuffer[pointNum].color.Set(1, 0, 0, 1);
+			displayBuffer[pointNum].type = 0;
+
+			direction[pointNum].Set(0, 1, 0);
+			rotationMat[pointNum] = IDENTITY_MAT;
+
+			//psize[pointNum] = 1;
+			pointNum++;
+			if (pointNum == maxAllowNum) {
+				printf("maximum number reached\n");
+			}
+
 		}
-
-		int x = i%roughsqrt;
-		int z = i/roughsqrt;
-		
-		displayBuffer[pointNum].pos.Set( (xmin+x*spacing)*displayscale, 500*displayscale, (zmin+z*spacing)*displayscale);
-		displayBuffer[pointNum].color.Set(1,0,0,1);
-		displayBuffer[pointNum].type = 0;
-		
-		direction[pointNum].Set(0,1,0);
-		rotationMat[pointNum] = IDENTITY_MAT;
-
-		//psize[pointNum] = 1;
-		pointNum++;
-		if(pointNum == maxAllowNum){
-			printf("maximum number reached\n");
-		}
-
 	}
+	if (pointNum > startnum) {
+		cudaMemcpy( deviceBuffer.dispBuffer+startnum,  displayBuffer+startnum, (pointNum-startnum)*sizeof(displayPack), cudaMemcpyHostToDevice);
+	}
+
 }
 
 int stokesianSolver::BirthAndDeath(){
@@ -144,14 +152,10 @@ void stokesianSolver::RunMobilityGPU() {
 	
 	//Advance
 	for (int i=0; i<pointNum; i++) {
-		displayBuffer[i].pos += unew[i]*dt;
+		
 		//rotation
 		tmpf3 = omega[i]*dt;
-
-		/*if(i==0){
-			printf("omega*dt: %f %f %f\n", tmpf3.x, tmpf3.y, tmpf3.z);
-			printf("%f %f %f\n", direction[i].x, direction[i].y, direction[i].z);
-		}*/
+		
 		cfloat3 init(0, 1, 0);
 		//RotateXYZ(direction[i], tmpf3);
 
@@ -182,7 +186,7 @@ void stokesianSolver::RunMobilityGPU() {
 void stokesianSolver::AddShape() {
 	
 	int shape = 2;
-	float displayscale = deviceBuffer.displayscale;
+	
 	//round
 	switch (shape) {
 	case ROUND:{
@@ -222,7 +226,7 @@ void stokesianSolver::AddShape() {
 					x = k*spacing - sphRadius + ((float)rand()/RAND_MAX-0.5)/10*spacing;
 					if(x*x + y*y + z*z >= sphRadius*sphRadius)
 						continue;
-					displayBuffer[pointNum].pos.Set(x*displayscale, y*displayscale, z*displayscale);
+					displayBuffer[pointNum].pos.Set(x, y, z);
 					displayBuffer[pointNum].color.Set(1,0,0,1);
 					pointNum++;
 				}
@@ -281,52 +285,13 @@ void stokesianSolver::LoadParam() {
 	maxAllowNum = XMLGetFloat("pnum");
 	dt = XMLGetFloat("dt");
 	gravity=XMLGetFloat3("gravity");
-	deviceBuffer.displayscale = XMLGetFloat("displayscale");
+	deviceBuffer.simscale = XMLGetFloat("simscale");
+	deviceBuffer.dt = dt;
 
 	pele = NULL;
 }
 
-void stokesianSolver::AddSphere(cfloat3 centre, float radius, float spacing, int id, float _psize) {
 
-	float sphRadius = radius;
-	int halfres = radius/spacing + 1;
-	float x, y, z;
-
-	for (int i = -halfres; i<=halfres; i++) {
-		for (int j=-halfres; j<=halfres; j++) {
-			for (int k=-halfres; k<=halfres; k++) {
-				z = i*spacing;
-				y = j*spacing;
-				x = k*spacing;
-				if (x*x + y*y + z*z >= sphRadius*sphRadius)
-					continue;
-				displayBuffer[pointNum].pos.Set(centre.x + x + ((float)rand()/RAND_MAX-0.5)/10*spacing,
-					centre.y + y + ((float)rand()/RAND_MAX-0.5)/10*spacing,
-				    centre.z + z + ((float)rand()/RAND_MAX-0.5)/10*spacing);
-				//psize[pointNum] = _psize ;//* ((float)rand()/RAND_MAX * 3.5);
-				pointNum++;
-			}
-		}
-	}
-}
-
-//void stokesianSolver::SetupAddBox(float3 xmin, float3 len, float spacing, int id) {
-//
-//	int xn = len.x/spacing;
-//	int yn = len.y/spacing;
-//	int zn = len.z/spacing;
-//	for (int i=0; i<zn; i++) {
-//		for (int j=0; j<yn; j++) {
-//			for (int k=0; k<xn; k++) {
-//				pos[realpnum*3] = xmin.x + k * spacing;
-//				pos[realpnum*3+1] = xmin.y + j * spacing;
-//				pos[realpnum*3+2] = xmin.z + i * spacing;
-//				psize[realpnum] = 1;
-//				realpnum++;
-//			}
-//		}
-//	}
-//}
 
 
 void stokesianSolver::SetForce() {
@@ -337,7 +302,15 @@ void stokesianSolver::SetForce() {
 
 		//boundary
 		if (displayBuffer[i].pos.y < 0)
-			force[i].y += 0.5*(-(displayBuffer[i].pos.y)/deviceBuffer.displayscale);
+			force[i].y += 0.5*(-(displayBuffer[i].pos.y));
+		if (displayBuffer[i].pos.x < -30)
+			force[i].x += 0.5*(-(displayBuffer[i].pos.x+30));
+		if (displayBuffer[i].pos.x > 30)
+			force[i].x += 0.5*(-(displayBuffer[i].pos.x-30));
+		if (displayBuffer[i].pos.z < -30)
+			force[i].z += 0.5*(-(displayBuffer[i].pos.z+30));
+		if (displayBuffer[i].pos.z > 30)
+			force[i].z += 0.5*(-(displayBuffer[i].pos.z-30));
 	}
 
 	cudaMemcpy(deviceBuffer.cuForce, force, sizeof(cfloat3)*pointNum, cudaMemcpyHostToDevice);
@@ -345,7 +318,8 @@ void stokesianSolver::SetForce() {
 
 void stokesianSolver::SolveMobilityGPU_walkthrough() {
 	getMobU_walkthrough(deviceBuffer, pointNum);
-	//getMobU_walkthrough(cuPos, pointNum, cuForce, cuUnew, cuOmega);
+	
+	cudaMemcpy(displayBuffer, deviceBuffer.dispBuffer, pointNum*sizeof(displayPack), cudaMemcpyDeviceToHost);
 	cudaMemcpy(unew, deviceBuffer.cuUnew, pointNum*sizeof(cfloat3), cudaMemcpyDeviceToHost);
 	cudaMemcpy(omega, deviceBuffer.cuOmega, pointNum*sizeof(cfloat3),cudaMemcpyDeviceToHost);
 }

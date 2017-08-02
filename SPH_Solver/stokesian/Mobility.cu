@@ -1,10 +1,12 @@
 
-
+#include "fluid_system_kern.cuh"
 #include "Mobility.cuh"
 #include <stdio.h>
 //#include "stokesian\NeighborGrid.cuh"
 
 __device__ float* signature;
+extern __device__ ParamCarrier paramCarrier;
+extern bufList	fbuf;
 
 __inline__ __device__ __host__ int tsId(int i, int j, int k) {
 	return i*9 + j*3 + k;
@@ -79,67 +81,6 @@ __device__ void PairwiseMobMatrix(cfloat3 drv, float A11[],float A1N[], float C1
 
 }
 
-__global__ void Kern_getMobMat(float* mat, float* pos,int* pairarray, int nsize) {
-	int i = blockIdx.x * blockDim.x + threadIdx.x;
-	int pairsize = nsize * (nsize-1)/2;
-	if(i>=pairsize)
-		return;
-	
-	//first get dr
-	int pi = pairarray[i*2];
-	int pj = pairarray[i*2+1];
-	cfloat3 drv( pos[pj*3]-pos[pi*3], pos[pj*3+1]-pos[pi*3+1], pos[pj*3+2]-pos[pi*3+2]);
-
-	float A11[9], A1N[9], C11[9], C1N[9], B11[9], B1N[9];
-
-	PairwiseMobMatrix(drv, A11,A1N,C11,C1N,B11,B1N);
-
-	int n1,n2,n3,n4;
-	int Adim = 6 * nsize;
-	int subdim = 3 * nsize;
-	for (int k=0; k<3; k++) {
-		for (int l=0; l<3; l++) {
-			n1 = l + 3*pj; //col at pj
-			n2 = k + 3*pj; //row at pj
-			n3 = k + 3*pi; //row at pi
-			n4 = l + 3*pi; //col at pi
-
-			//mobmat A
-			mat[n3*Adim + n1] = A1N[k*3+l]; //row-pi, col-pj
-			//mat[n2*Adim + n1] += A11[k*3+l];
-			//mat[n3*Adim + n4] += A11[k*3+l];
-			//mobmat C
-			mat[(n3+subdim)*Adim + n1+subdim ] = C1N[k*3+l];
-			//mat[(n2+subdim)*Adim + n1+subdim ] = C11[k*3+l];
-			//mat[(n3+subdim)*Adim + n4+subdim ] = C11[k*3+l];
-			//mobmat B
-			mat[n3*Adim + n1+subdim] = B1N[k*3+l];
-			//mat[n2*Adim + n1+subdim] -= B11[k*3+l];
-			//mat[n3*Adim + n4+subdim] += B11[k*3+l];
-		}
-	}
-	//the matrix is only half completed
-	//and the diagonal elements are incomeplete
-}
-
-__global__ void Kern_finishMat(float* mat, int nsize) {
-	int i = blockIdx.x * blockDim.x + threadIdx.x;
-	if(i>= 6*nsize)
-		return;
-	int Adim = 6*nsize;
-	//diagonal
-	if (i <3*nsize) {
-		mat[i*Adim + i] += 1;
-	}
-	else {
-		mat[i*Adim + i] += 0.75;
-	}
-	//the other half
-	for (int j=i+1; j<6*nsize; j++) {
-		mat[j*Adim + i] = mat[i*Adim + j];
-	}
-
-}
 
 __global__ void MVmultiply(float* dst, float* mat, float* f,int n) {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -156,30 +97,6 @@ __global__ void MVmultiply(float* dst, float* mat, float* f,int n) {
 	return;
 }
 
-//void getMobMat(float* mat, float* pos, int* pairArray, int nsize) {
-//	int pairsize = nsize * (nsize-1) /2;
-//	//cal kernel get Matrix
-//	int threadnum = 256;
-//	int blocknum = (pairsize-1) / threadnum + 1;
-//	cudaMemset(mat, 0, sizeof(float)*nsize*nsize*36);
-//	Kern_getMobMat<<<blocknum,threadnum>>>(mat,pos,pairArray,nsize);
-//	cudaDeviceSynchronize();
-//
-//	blocknum = (6*nsize-1)/threadnum + 1;
-//	Kern_finishMat<<<blocknum,threadnum>>> (mat, nsize);
-//	cudaDeviceSynchronize();
-//
-//	/*float* dbg = new float[36*nsize*nsize];
-//	cudaMemcpy(dbg, mat, sizeof(float)*36*nsize*nsize, cudaMemcpyDeviceToHost);
-//	FILE* f = fopen("dbg.txt","w+");
-//	for (int i=0; i<nsize*6; i++) {
-//		for (int j=0; j<nsize*6; j++) {
-//			fprintf(f, "%f ", dbg[i*6*nsize+j]);
-//		}
-//		fprintf(f, "\n");
-//	}
-//	fclose(f);*/
-//}
 
 //calculate velocity
 void getMobU(float* mat,float* f, float* u, int nsize) {
@@ -285,6 +202,8 @@ __device__ __host__ void mulmat(float* dst, float* a,float* b){
 //	//printf("%d %d\n", id, count);
 //}
 
+
+
 __global__ void Kern_getmobu_walkthrough( stokesianBufList buflist, int nsize) {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	if (i>=nsize)
@@ -300,23 +219,15 @@ __global__ void Kern_getmobu_walkthrough( stokesianBufList buflist, int nsize) {
 	float force[3];
 	
 
-	buflist.cuUnew[id].Set(0,0,0);
+	//buflist.cuUnew[id].Set(0,0,0);
 	buflist.cuOmega[id].Set(0,0,0);
 	
-	/*if (id==0) {
-		printf("%f %f %f %f\n", buflist.cuForce[id].x, 
-			buflist.cuForce[id].y,
-			buflist.cuForce[id].z,
-			buflist.displayscale);
-	}*/
-	
-
 	
 	for (int k=0; k<nsize; k++) {
 		kid = k;
 		if (kid != id) {
 			drv = buflist.dispBuffer[kid].pos - ipos;
-			drv /= buflist.displayscale;
+			
 			
 			float A11[9], A1N[9], C11[9], C1N[9], B11[9], B1N[9];
 
@@ -339,9 +250,8 @@ __global__ void Kern_getmobu_walkthrough( stokesianBufList buflist, int nsize) {
 			buflist.cuUnew[id] += utmp;
 		}
 	}
-
-	buflist.cuUnew[id] *= buflist.displayscale;
 	
+	buflist.dispBuffer[id].pos += buflist.cuUnew[id] * buflist.dt;
 }
 
 __global__ void Kern_getForce(stokesianBufList buflist, int nsize){
@@ -354,25 +264,19 @@ __global__ void Kern_getForce(stokesianBufList buflist, int nsize){
 	int kid;
 	cfloat3 drv;
 
-	//float force[3];
-	//f[i] = gravity;
-	//f[i*3+0] = gravity.x;
-	//f[i*3+1] = gravity.y;
-	//f[i*3+2] = gravity.z;
-	//loop through neighboring cells
+	
 	int count = 0;
 	for (int k=0; k<nsize; k++) {
 		kid = k;
 		if (kid != id) {
 			drv = buflist.dispBuffer[kid].pos - ipos;
-			drv /= buflist.displayscale;
 
 			//near-field interactions between particles
 			float dr = sqrt(dot(drv, drv));
 			
 			//splitting
 			
-			float actdist = 6;
+			float actdist = 1.5;
 			if (dr < actdist) {
 				float fac = 5*(exp(actdist/dr)-2.7128*dr/actdist);
 				cfloat3 intforce = drv * (-1) * fac;
@@ -406,26 +310,70 @@ __global__ void Kern_getForce(stokesianBufList buflist, int nsize){
 //	return;
 //}
 
+__device__ __inline__ float getWeight(cfloat3 pos, cint3 idvec, float cellsize) {
+	cfloat3 dx = pos - (cfloat3)idvec * cellsize;
+	return (1 - abs(dx.x)/cellsize) * (1 - abs(dx.y)/cellsize) * (1 - abs(dx.z)/cellsize);
+}
 
+__device__ __inline__ int getId(cint3 idvec) {
+	return idvec.y*paramCarrier.mpmRes.x*paramCarrier.mpmRes.z + idvec.z*paramCarrier.mpmRes.x + idvec.x;
+}
 
-//void getMobU_walkthrough(cfloat3* pos, int nsize, cfloat3* f, cfloat3* u, cfloat3* omega) {
-//	int threadnum = 256;
-//	int blocknum = (nsize-1)/256+1;
-//
-//	Kern_getForce<<<blocknum, threadnum>>>(pos, nsize, f);
-//	cudaDeviceSynchronize();
-//
-//	Kern_getmobu_walkthrough<<<blocknum, threadnum>>>(pos, nsize, f, u, omega);
-//	cudaDeviceSynchronize();
-//
-//	return;
-//}
+__global__ void Kern_interpolateVelocity(stokesianBufList buflist, int pnum, bufList fbuf) {
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i>=pnum)
+		return;
+
+	cfloat3 ipos = buflist.dispBuffer[i].pos;
+	cint3 mpmres = paramCarrier.mpmRes;
+	float cellsize = paramCarrier.mpmcellsize;
+	
+	ipos = ipos - paramCarrier.mpmXmin;
+	cfloat3 idvecf = ipos / paramCarrier.mpmcellsize;
+	cint3 idvec(idvecf.x, idvecf.y, idvecf.z);
+	cfloat3 dx;
+	float weight;
+	cfloat3 velsum(0,0,0);
+
+	
+	cint3 tmp3;
+	tmp3 = idvec + cint3(0, 0, 0);
+	velsum  += fbuf.mpmVel[ getId(tmp3) ] * getWeight(ipos, tmp3, cellsize);
+	
+	tmp3 = idvec + cint3(1, 0, 0);
+	velsum  += fbuf.mpmVel[getId(tmp3)] * getWeight(ipos, tmp3, cellsize);
+
+	tmp3 = idvec + cint3(0, 1, 0);
+	velsum  += fbuf.mpmVel[getId(tmp3)] * getWeight(ipos, tmp3, cellsize);
+
+	tmp3 = idvec + cint3(0, 0, 1);
+	velsum  += fbuf.mpmVel[getId(tmp3)] * getWeight(ipos, tmp3, cellsize);
+
+	tmp3 = idvec + cint3(1, 1, 0);
+	velsum  += fbuf.mpmVel[getId(tmp3)] * getWeight(ipos, tmp3, cellsize);
+
+	tmp3 = idvec + cint3(1, 0, 1);
+	velsum  += fbuf.mpmVel[getId(tmp3)] * getWeight(ipos, tmp3, cellsize);
+
+	tmp3 = idvec + cint3(0, 1, 1);
+	velsum  += fbuf.mpmVel[getId(tmp3)] * getWeight(ipos, tmp3, cellsize);
+
+	tmp3 = idvec + cint3(1, 1, 1);
+	velsum  += fbuf.mpmVel[getId(tmp3)] * getWeight(ipos, tmp3, cellsize);
+
+	//printf("%f %f %f\n",velsum.x, velsum.y,velsum.z);
+	buflist.cuUnew[i] = velsum / paramCarrier.simscale;
+}
+
 
 void getMobU_walkthrough(stokesianBufList buflist, int pnum) {
 	int threadnum = 256;
 	int blocknum = (pnum-1)/256+1;
 
 	Kern_getForce<<<blocknum, threadnum>>>(buflist, pnum);
+	cudaDeviceSynchronize();
+
+	Kern_interpolateVelocity<<<blocknum, threadnum>>>(buflist, pnum, fbuf);
 	cudaDeviceSynchronize();
 
 	Kern_getmobu_walkthrough<<<blocknum, threadnum>>>(buflist, pnum);

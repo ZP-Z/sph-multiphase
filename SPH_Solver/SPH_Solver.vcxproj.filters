@@ -25,9 +25,6 @@
     <ClCompile Include="fluids\FluidIOUtility.cpp">
       <Filter>fluid</Filter>
     </ClCompile>
-    <ClCompile Include="fluids\MemTransfer.cpp">
-      <Filter>fluid</Filter>
-    </ClCompile>
     <ClCompile Include="stokesian\stokesian.cpp">
       <Filter>stokesian</Filter>
     </ClCompile>
@@ -69,6 +66,9 @@
     <ClInclude Include="stokesian\stokesian.h">
       <Filter>stokesian</Filter>
     </ClInclude>
+    <ClInclude Include="fluids\MpmSolver.cuh">
+      <Filter>fluid\CudaCode</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="fluids\fluid_system_kern.cuh">
@@ -107,6 +107,9 @@
     </CudaCompile>
     <CudaCompile Include="stokesian\Mobility.cu">
       <Filter>stokesian</Filter>
+    </CudaCompile>
+    <CudaCompile Include="fluids\MpmSolver.cu">
+      <Filter>fluid\CudaCode</Filter>
     </CudaCompile>
   </ItemGroup>
 </Project>

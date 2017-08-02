@@ -1025,11 +1025,11 @@ void SolverGUI::SetupSolver(){
 	pnum = & psys->pointNum;
 	dispBuffer = psys->displayBuffer;
 	
-	/*stokesian = new stokesianSolver();
-	stokesian->SetupSolver();
-	pnum = &stokesian->pointNum;
-	dispBuffer = stokesian->displayBuffer;
-	rotationBuffer = stokesian->rotationMat;*/
+	//stokesian = new stokesianSolver();
+	//stokesian->SetupSolver();
+	//pnum = &stokesian->pointNum;
+	//dispBuffer = stokesian->displayBuffer;
+	//rotationBuffer = stokesian->rotationMat;
 
 	GetBoundingBox();
 }

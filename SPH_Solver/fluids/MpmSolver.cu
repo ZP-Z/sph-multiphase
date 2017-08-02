@@ -3,13 +3,7 @@
 #include <math.h>
 #include <string.h>
 #include <assert.h>
-
-#include <conio.h>
-
-#include <GL/glut.h>
-#include <cuda_gl_interop.h>
-
-#include "fluid_system_host.cuh"		
+	
 #include "fluid_system_kern.cuh"
 #include "thrust\device_vector.h"	//thrust libs
 #include "thrust\sort.h"
@@ -36,80 +30,118 @@ __global__ void initMpm(bufList buf, int mpmSize){
     if ( i >= mpmSize )
         return;
 
-    int yid = i / simData.mpmXl / simData.mpmZl;
-    int xid = i % simData.mpmXl;
-    int zid = i / simData.mpmXl % simData.mpmZl;
-    //id = xid + zid*xl + yid*xl*zl 
+	cint3 mpmres = paramCarrier.mpmRes;
+    int yid = i / mpmres.x / mpmres.z;
+    int xid = i % mpmres.x;
+    int zid = i / mpmres.x % mpmres.z;
 
-    int3 gridRes = simData.gridRes;
-    int3 gridScan = simData.gridScanMax;
+    cint3 gridRes = simData.gridRes;
+    cint3 gridScan = simData.gridScanMax;
 
 
     cfloat3 pos;
-    pos.x = simData.minVec.x + xid * simData.mpmSpacing;
-    pos.y = simData.minVec.y + yid * simData.mpmSpacing;
-    pos.z = simData.minVec.z + zid * simData.mpmSpacing;
+	cfloat3 dx(xid,yid,zid);
+	pos = paramCarrier.mpmXmin + dx * paramCarrier.mpmcellsize;
     buf.mpmPos[i] = pos;
 
-    cfloat3 gcf = (pos - simData.minVec) * simData.gridDelta;
-    int3 gc = make_int3 ( int ( gcf.x ), int ( gcf.y ), int ( gcf.z ) );    
+
+    cfloat3 gcf = (pos - simData.gridMin) * simData.gridDelta;
+    cint3 gc = cint3 ( int ( gcf.x ), int ( gcf.y ), int ( gcf.z ) );    
     uint gs = (gc.y * gridRes.z + gc.z)*gridRes.x + gc.x;
     if (gc.x >= 1 && gc.x <= gridScan.x && gc.y >= 1 && gc.y <= gridScan.y && gc.z >= 1 && gc.z <= gridScan.z) {
 		buf.mpmGid[i] = gs;
-        buf.mpmIdSort[i] = i;
     }
     else{
         buf.mpmGid[i] = GRID_UNDEF;
-        buf.mpmIdSort[i] = i;
+		printf("%f %f %f %d %d %d\n", pos.x, pos.y, pos.z, xid, yid, zid);  
     }
 
-    //Attributes Initialization
-    for (int mi = 0; mi<9; mi++)
-        buf.mpmTensor[i*9+mi] = 0;
-
 }
 
-__global__ void MpmGetCnt(bufList buf, int mpmSize){
-    uint i = __mul24 ( blockIdx.x, blockDim.x ) + threadIdx.x;
-	if (i >= mpmSize) return;
-	if (buf.mpmGid[i] != GRID_UNDEF)
-	{
-		int gndx = i - buf.mpmGridOff[buf.mpmGid[i]];
-		if (gndx == 0)
-			buf.mpmGridCnt[buf.mpmGid[i]] -= buf.mpmGridOff[buf.mpmGid[i]];
 
-        buf.mpmGridVList[i] =  buf.mpmIdSort[i] ;
-	}
-}
-
-__global__ void MpmCalcFirstCnt(bufList buf, int mpmSize){
-    uint i = __mul24 ( blockIdx.x, blockDim.x ) + threadIdx.x;
+__global__ void MpmColorTest(bufList buf, int mpmSize) {
+	uint i = blockIdx.x * blockDim.x + threadIdx.x;
 	if (i >= mpmSize)
-        return;
-    int tmp = buf.mpmGid[i];
-    
-    //if (buf.bornid[i] % 10000 == 0)
-    //    printf("meow");
-    
-    if ((i == 0 || tmp != buf.mpmGid[i - 1]))
-	{
-        if (tmp != GRID_UNDEF){
-            buf.mpmGridOff[tmp] = i;
-        }
-	}
+		return;
 
-	if (i != 0 && buf.mpmGid[i] != buf.mpmGid[i - 1] && buf.mpmGid[i - 1] != GRID_UNDEF)
-		buf.mpmGridCnt[buf.mpmGid[i - 1]] = i;
-	if (i == mpmSize - 1 && buf.mpmGid[i] != GRID_UNDEF)
-		buf.mpmGridCnt[buf.mpmGid[i]] = i + 1;
+	if (buf.mpmPos[i].x<0) {
+		uint gc = buf.mpmGid[i];
+		if (gc==GRID_UNDEF) {
+			printf("mpm nodex index error.\n");
+			return;
+		}
+
+		for (int c=0; c<simData.gridAdjCnt; c++) {
+			int cell = gc + simData.gridAdj[c];
+			
+			if(buf.mgridcnt[cell]==0)
+				continue;
+
+			int cfirst = buf.mgridoff[cell];
+			int clast = cfirst + buf.mgridcnt[cell];
+
+			for (int j=cfirst; j<clast; j++) {
+				buf.displayBuffer[j].color.Set(1,1,1,1);
+				
+				//if(i%10==0)
+					
+			}
+		}
+	}
+}
+
+__global__ void MpmGetMomentum(bufList buf, int mpmSize) {
+	uint i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i >= mpmSize)
+		return;
+
+	
+	uint gc = buf.mpmGid[i];
+	cfloat3 pos = buf.mpmPos[i];
+	
+	cfloat3 posj; 
+	cfloat3 posij;
+	float dist;
+	float weightij;
+
+	cfloat3 velsum(0,0,0);
+	float weightsum=0;
+	float cellsize = paramCarrier.mpmcellsize;
+
+	for (int c=0; c<simData.gridAdjCnt; c++) {
+		int cell = gc + simData.gridAdj[c];
+
+		if (buf.mgridcnt[cell]==0)
+			continue;
+
+		int cfirst = buf.mgridoff[cell];
+		int clast = cfirst + buf.mgridcnt[cell];
+
+		for (int j=cfirst; j<clast; j++) {
+			posj = buf.displayBuffer[j].pos;
+			posij = pos - posj;
+			
+			if(abs(posij.x)>=cellsize || abs(posij.y)>=cellsize || abs(posij.z)>=cellsize)
+				continue;
+
+			//trilinear interpolation
+			weightij = (1-abs(posij.x)/cellsize) * (1-abs(posij.y)/cellsize) * (1-abs(posij.z)/cellsize);
+			velsum += buf.calcBuffer[j].vel * weightij;
+			weightsum += weightij;
+		}
+	}
+	if(weightsum > EPSILON){
+		buf.mpmVel[i] = velsum / weightsum;
+		//printf("%f %f %f\n",buf.mpmVel[i].x, buf.mpmVel[i].y, buf.mpmVel[i].z);
+	}
+	else
+		buf.mpmVel[i].Set(0,0,0);
 }
 
 
 
 
-
-
-
+/*
 __device__ void ShapeFunctionValue(cfloat3& xI, cfloat3& xp, float& val){
     int nxI, nyI, nzI;//natural coordinates
     cfloat3 center;
@@ -149,6 +181,7 @@ __device__ void ShapeFunctionValue(cfloat3& xI, cfloat3& xp, float& val){
     cfloat3 natCod = (xp-center)*2/simData.mpmSpacing;
     val = 0.125 * (1+natCod.x*nxI) * (1+natCod.y*nyI) * (1+natCod.z*nzI);
 }
+
 
 __device__ void ShapeFunctionGradValue(cfloat3& xI, cfloat3& xp, float* nGrad){
     int nxI, nyI, nzI;//natural coordinates
@@ -209,7 +242,7 @@ __device__ void InterpolateParticleStrain(cfloat3& xp, uint i, bufList buf,float
 
     int xid = my * xl * zl + mz * xl + mx; //(-1,-1,-1 grid point)
     cfloat3 xI = buf.mpmPos[xid];
-    cfloat3 center = make_cfloat3(xI.x+simData.mpmSpacing*0.5, xI.y+simData.mpmSpacing*0.5, xI.z+simData.mpmSpacing*0.5);
+    cfloat3 center = cfloat3(xI.x+simData.mpmSpacing*0.5, xI.y+simData.mpmSpacing*0.5, xI.z+simData.mpmSpacing*0.5);
     cfloat3 natCod = (xp-center)*2/simData.mpmSpacing;
 
     float dxN[3];
@@ -256,7 +289,7 @@ __device__ void InterpolateParticlePosVel(cfloat3& xp, uint i, bufList buf, cflo
 
     int xid = my * xl * zl + mz * xl + mx; //(-1,-1,-1 grid point)
     cfloat3 xI = buf.mpmPos[xid];
-    cfloat3 center = make_cfloat3(xI.x+simData.mpmSpacing*0.5, xI.y+simData.mpmSpacing*0.5, xI.z+simData.mpmSpacing*0.5);
+    cfloat3 center = cfloat3(xI.x+simData.mpmSpacing*0.5, xI.y+simData.mpmSpacing*0.5, xI.z+simData.mpmSpacing*0.5);
     cfloat3 natCod = (xp-center)*2/simData.mpmSpacing;
 
     float weight;
@@ -316,9 +349,7 @@ __device__ void contributeGridMassVel_ShapeFunction(float* mass, cfloat3* vel, f
 		uint j = buf.mgrid[cndx]; //particle index
 		
         ShapeFunctionValue(p, buf.mpos[j], weight);
-        /*if (i%500==0 && weight>0){
-            printf("%d %f %f %f %f %f %f %f\n", i, weight, p.x, p.y, p.z, buf.mpos[j].x,buf.mpos[j].y,buf.mpos[j].z);
-        }*/
+
         
         if (buf.MFtype[j]==3){//fluid
             vel[1] += weight * buf.mf_restmass[j] * buf.mvel[j];
@@ -382,7 +413,7 @@ __global__ void GetGridMassVel(bufList buf, int mpmSize){
     }
 }
 
-
+/*
 __global__ void CalcMpmParticleTensor(bufList buf, int pnum){
     uint i = blockIdx.x * blockDim.x + threadIdx.x;	// particle index				
 	if ( i >= pnum ) return;
@@ -432,10 +463,6 @@ __global__ void CalcMpmParticleTensor(bufList buf, int pnum){
     
     float epsum = (epsilon[0] + epsilon[4] + epsilon[8])/3.0;
     
-    /*if (buf.MFid[i]%20000==0){
-        print9("epsilon0", i, epsilon);
-    }
-*/
     epsilon[0] -= epsum;
     epsilon[4] -= epsum;
     epsilon[8] -= epsum;
@@ -450,13 +477,7 @@ __global__ void CalcMpmParticleTensor(bufList buf, int pnum){
 
 	//float checkcolor = abs(buf.MFtensor[i*9+0])+abs(buf.MFtensor[i*9+1])+abs(buf.MFtensor[i*9+2]);
 	//buf.mclr[i] = COLORA( abs(buf.MFtensor[i*9+0])/checkcolor,abs(buf.MFtensor[i*9+1])/checkcolor,abs(buf.MFtensor[i*9+2])/checkcolor,1);
-   
-	/* if (buf.MFid[i]%20000==0){
-        print9("velgrad",i,velGrad);
-        print9("epsilon",i,epsilon);
-        print9("omega",  i,omega);
-        print9("tensor", i, buf.MFtensor+i*9);
-    }*/
+
 
 }
 
@@ -725,7 +746,7 @@ __device__ void CalcMpmParticleCollision(bufList buf, uint i, cfloat3& accel, cf
             accel += (stiff * dx + damp * vel.y) * make_cfloat3(0,-1,0);
         }
 
-       /* if (buf.mpos[i].x < simData.pboundmin.x + margin && vel.x<0){
+        if (buf.mpos[i].x < simData.pboundmin.x + margin && vel.x<0){
             dx = simData.pboundmin.x + margin - buf.mpos[i].x;
             accel += stiff * dx * make_cfloat3(1,0,0);
         }
@@ -743,7 +764,7 @@ __device__ void CalcMpmParticleCollision(bufList buf, uint i, cfloat3& accel, cf
         if (buf.mpos[i].z > simData.pboundmax.z - margin && vel.z>0){
             dx = buf.mpos[i].z - simData.pboundmax.z + margin;
             accel += stiff * dx * make_cfloat3(0,0,-1);
-        }*/
+        }
 	}
 }
 
@@ -815,11 +836,7 @@ __device__ void CollisionDetection ( cfloat3& pos, cfloat3& vel, cfloat3& accel0
 	//accel += accel0;
 	accel0 += accel;
 
-    // Accel Limit
-	/*speed = dot(accel0,accel0);
-	if ( speed > simData.AL2 ) {
-		accel0 *= simData.AL / sqrt(speed);
-	}*/
+
 
 	// Leap-frog Integration
 
@@ -860,3 +877,5 @@ __global__ void UpdateMpmParticlePos(bufList buf, int pnum){
 	buf.mforce[i] = simData.pgravity - accel; //for drift velocity
 
 }
+
+*/

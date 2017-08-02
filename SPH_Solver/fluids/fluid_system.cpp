@@ -5,6 +5,7 @@
 
 #include "fluid_system.h"
 #include "fluid_system_host.cuh"
+#include "MpmSolver.cuh"
 
 double scaleP,scaleP3,scaledis;
 
@@ -36,6 +37,7 @@ void FluidSystem::Setup ()
 
 	SetupDevice();
 	
+	SetupMPMGrid();
 	//BeforeFirstRun();
 }
 
@@ -109,12 +111,13 @@ void FluidSystem::SetupGridAllocate ()
 
 void FluidSystem::SetupDevice() {
 
-	CarryParam(hostCarrier);
+	
 
 	FluidSetupCUDA(hostCarrier); //allocate buffers
 	FluidParamCUDA(hostCarrier); //some parameters
+	
 
-	//TransferToCUDA();		// Initial transfer
+	CarryParam(hostCarrier);
 	TransferToCUDA(fbuf);
 
 }
@@ -283,7 +286,7 @@ void FluidSystem::SetupSimpleSphCase(){
 	//SetupAddSolid(volumes[0], volumes[1], m_Param[PSPACING], 0);
     //SetupAddBubble(volumes[2], volumes[3], m_Param[PSPACING]*1.2, 1);
 
-    //LoadBoundary("cfg\\boundary.cfg");
+    LoadBoundary("cfg\\boundary.cfg");
 	//LoadBoundary("cfg\\Cup.cfg");
 
 	hostCarrier.num = pointNum;
@@ -440,7 +443,7 @@ void FluidSystem::Run (int width, int height)
 	}
 
 	//if (frameNo==20) {
-	EmitParticles(2);
+	//EmitParticles(2);
 		
 	//}
 
@@ -473,7 +476,9 @@ void FluidSystem::RunSimpleSPH() {
 	MfAdvanceCUDA(0, hostCarrier.dt, hostCarrier.simscale);
 	CheckTimer("advance");
 
-	
+	//MpmColorTestCUDA();
+	//MpmGetMomentumCUDA();
+
 	TransferFromCUDA(fbuf);
 }
 
@@ -491,13 +496,13 @@ void FluidSystem::EmitParticles (int cat)
 	if (  frameNo % emitInterval == 0 ) {
 		ParticleEmitter emitter;
 		emitter.dir.Set(0,-1,0);
-		emitter.position.Set(0,50,0);
+		emitter.position.Set(0,10,0);
 		emitter.vel = 1;
 		emitter.radius = 6;
 		emitter.spacing = pSpacing;
 		emitter.EmitImmediate(plist);
 
-		emitter.position.Set(0, 50+pSpacing, 0);
+		emitter.position.Set(0, 10+pSpacing, 0);
 		emitter.EmitImmediate(plist);
 
 		InsertParticles(emitter, plist, cat);
@@ -622,7 +627,8 @@ void FluidSystem::ParseXML(){
 
 	XMLElement* fluidElement = doc.FirstChildElement("Fluid");
 	XMLElement* sceneElement = doc.FirstChildElement("MultiScene");
-	
+	XMLElement* boundElement = doc.FirstChildElement("BoundInfo");
+
 	if(!fluidElement || !sceneElement)
 	{
 		printf("missing fluid/scene xml node");
@@ -679,6 +685,12 @@ void FluidSystem::ParseXML(){
 	hostCarrier.extdamp = XMLGetFloat("ExtDamp");
 	hostCarrier.softminx = XMLGetFloat3("SoftBoundMin");
 	hostCarrier.softmaxx = XMLGetFloat3("SoftBoundMax");
+
+	pele = boundElement;
+	hostCarrier.bmass = XMLGetFloat("Mass");
+	hostCarrier.bRestdensity = XMLGetFloat("RestDensity");
+	hostCarrier.bvisc = XMLGetFloat("Viscosity");
+
 }
 
 void FluidSystem::TransferToCUDA(bufList& fbuf) {
@@ -704,4 +716,45 @@ void FluidSystem::EmitUpdateCUDA(int startnum, int endnum, bufList& fbuf)
 	fcuda.pnum = pointNum;
 	computeNumBlocks(fcuda.pnum, 384, fcuda.numBlocks, fcuda.numThreads);
 	updateParam(&fcuda);
+}
+
+
+
+void FluidSystem::SetupMPMGrid() {
+	//parameter
+	mpmxmin = hostCarrier.softminx - cfloat3(10,10,10);
+	mpmxmax = hostCarrier.softmaxx + cfloat3(10,10,10);
+	mpmcellsize = pSpacing * 2;
+	cfloat3 tmp = (mpmxmax - mpmxmin) / mpmcellsize + cfloat3(2,2,2); //node number of each dimension
+	mpmres.Set(tmp.x,tmp.y,tmp.z);
+	mpmxmax = mpmxmin + (cfloat3)(mpmres+cint3(-1,-1,-1)) * mpmcellsize;
+
+	hostCarrier.mpmXmin = mpmxmin;
+	hostCarrier.mpmXmax = mpmxmax;
+	hostCarrier.mpmcellsize = mpmcellsize;
+	hostCarrier.mpmNodeNum = mpmres.prod();
+	hostCarrier.mpmRes = mpmres;
+
+	nodevel = new cfloat3[ hostCarrier.mpmNodeNum ];
+
+	//u = new float[(mpmres.x+1)*mpmres.y*mpmres.z];
+	//v = new float[mpmres.x*(mpmres.y+1)*mpmres.z];
+	//w = new float[mpmres.x*mpmres.y*(mpmres.z+1)];
+
+	MpmAllocateBufferCUDA(hostCarrier);
+	CarryParam(hostCarrier);
+
+	IndexMPMSortCUDA();
+}
+
+void FluidSystem::ReleaseMPMGrid() {
+	delete nodevel;
+}
+
+void FluidSystem::CopyMPMFormDevice() {
+	cudaMemcpy(nodevel, fbuf.mpmVel, sizeof(cfloat3)*hostCarrier.mpmNodeNum, cudaMemcpyDeviceToHost);
+}
+
+void FluidSystem::IndexSortMpmNode() {
+	IndexMPMSortCUDA();
 }

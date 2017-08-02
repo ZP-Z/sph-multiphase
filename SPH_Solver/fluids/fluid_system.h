@@ -10,6 +10,7 @@
 
 #include "../common_header.h"
 #include "CatToolBox.h"
+#include "fluid_system_kern.cuh"
 
 #define GRID_UCHAR			0xFF
 #define GRID_UNDEF			4294967295
@@ -46,10 +47,11 @@ public:
 	void BeforeFirstRun();
 	void SetupDevice();
 	
+	
+
 	void SetupSimpleSphCase();
 
 
-	//Manipulating particles
 	void AllocateParticles(int cnt);
 	int AddParticle();
 	void InsertParticles(
@@ -59,6 +61,9 @@ public:
 
 	void saveParticle(std::string name);
 	int loadParticle(std::string name);
+
+
+
 
 	//Code Generate Entities
 	void SetupMfAddVolume( cfloat3 min, cfloat3 max, float spacing, cfloat3 offs, int cat);// cat: category label
@@ -83,14 +88,9 @@ public:
 
 
 	//Memery Transfer
-	//void TransferToCUDA();
-	//void TransferFromCUDA();
-	//void TransferFromCUDAForLoad();
 	void EmitUpdateCUDA(int startnum, int endnum, bufList& fbuf);
 	void TransferToCUDA(bufList& fbuf);
 	void TransferFromCUDA(bufList& fbuf);
-
-
 
 	// Simulation
 	void Run (int w, int h);
@@ -112,7 +112,7 @@ public:
 
 
 
-
+	//particle buffer
 	displayPack* displayBuffer;
 	calculationPack* calculationBuffer;
 	IntermediatePack* intmBuffer;
@@ -139,10 +139,24 @@ public:
 	float viscratio[3];
 	float pSpacing, pRealDist;
 	
+	
+
 	// Timer
 	float lastTime;
 	std::vector<const char*> timerStrs;
 	std::vector<float> timerVals;
 
 	ParamCarrier hostCarrier;
+
+
+	//mpm 
+	cfloat3 mpmxmin, mpmxmax;
+	cint3 mpmres;
+	float mpmcellsize;
+	cfloat3* nodevel;
+	
+	void SetupMPMGrid();
+	void ReleaseMPMGrid();
+	void CopyMPMFormDevice();
+	void IndexSortMpmNode();
 };

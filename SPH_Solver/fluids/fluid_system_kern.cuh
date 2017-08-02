@@ -51,36 +51,39 @@
 		int				mf_catnum;
 		float			mf_dt;
 
-		uint			mf_multiFlagPNum;   //used with Buflist.mf_multiFlag, stores total number count (of flags)
-		float			mf_splitVolume;
-		float			mf_mergeVolume;
-		uint			mf_maxPnum;
-		float			cont,cont1,cont2;
-		int				mf_up;
-		float relax;
-		int example;
-		float			by,bxmin,bxmax,bzmin,bzmax,pan_r,omega; // for example3 rotation
-		int				loadwhich;
-		float			solid_coG, solid_coV, solid_coK, solid_coA, solid_coB, solid_fsa, solid_fsb, solid_coN, solid_phi, solid_Yradius;
-
-		float			coK, coG, phi, coA, coB, initspacing, coN, Yradius;
-		float			visc_factor, solid_pfactor, fluid_pfactor;
-		float			fsa, fsb, bdamp, boundaryVisc, sleepvel,coD,coD0;
-		float			fluidVConstraint, tohydro;
-
         int             mpmXl, mpmYl, mpmZl;
         int             mpmSize;
         int             mpmBlocks, mpmThreads;
         float           mpmSpacing;
-        cfloat3          minVec, maxVec;
 
     };
 
-	
+	struct bufList {
+		//Particle properties
 
-	// Prefix Sum defines - 16 banks on G80
-	#define NUM_BANKS		16
-	#define LOG_NUM_BANKS	 4
+		displayPack* displayBuffer;
+		calculationPack* calcBuffer;
+		IntermediatePack* intmBuffer;
+
+		//For sorting
+		char*			msortbuf;
+		int*			mgridcnt;
+		int*			mgridoff;
+		uint*			mgcell;
+		uint*			mgndx;
+		int*			MFidTable;
+		uint*			midsort;
+		//End sorting
+
+		//Mpm/Flip Grid
+		cfloat3*        mpmPos; //node
+		float*          mpmMass;
+		cfloat3*        mpmVel; //node velocity
+		float *u, *v, *w; //staggered velocity
+		cfloat3*        mpmForce;
+		uint*           mpmGid;    //mpmSize
+
+	};// End particle&grid buffers
 	
 	//new sort
 	__global__ void InitialSort ( bufList buf, int pnum );
@@ -105,8 +108,7 @@
 	__global__ void ComputeDensityPressure(bufList buf,int pnum);
 	__global__ void ComputeBoundaryVolume(bufList buf,int pnum);
 
-	//calculating functions for certain cases
-	__global__ void mfChangeDensity (bufList buf,int pnum,const float scale);
+
 
 	//calculating functions for project-u
 	__global__ void ComputeForce_projectu( bufList buf, int pnum );
@@ -123,10 +125,7 @@
 
     //Mpm 
 
-    __global__ void initMpm        (bufList buf, int mpmSize);
-    __global__ void MpmGetCnt      (bufList buf,int mpmSize);
-    __global__ void MpmCalcFirstCnt(bufList buf,int mpmSize);
-
+ 
     __global__ void GetGridMassVel(bufList buf,int mpmSize);
     
 	__global__ void CalcMpmParticleTensor(bufList buf,int pnum);

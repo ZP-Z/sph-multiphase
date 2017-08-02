@@ -12,35 +12,25 @@
 	<Num> 100000 </Num>
 	<SimScale>		0.005		</SimScale>
 	<Name>		Test 	</Name>
-	<DT>			0.0005 </DT>
+	<DT>			0.0001 </DT>
 	<Radius> 0.01 </Radius>
 	<SmoothRadius> 0.015 </SmoothRadius>
 	<Viscosity>	 1.0		</Viscosity>
 	<Mass> 0.00010543 </Mass>
 	<RestDensity> 600 </RestDensity>
 	<IntStiff>		0.03	 </IntStiff>
-	<ExtStiff>	50000.0	</ExtStiff>
+	<ExtStiff>	0000.0	</ExtStiff>
 	<ExtDamp>	100.0		</ExtDamp>
 	<ScaleP>	1	</ScaleP>
 	<ScaleDis>	0.9	</ScaleDis>
 	<PlaneGravDir>	0,-9.8,0	</PlaneGravDir>
 	<FluidCount> 3 </FluidCount>
-	<!--VolMin0>		 30, 2, 30	</VolMin0>
-	<VolMax0>		 55, 20,  55	</VolMax0-->
-	<SoftBoundMin>	-20, 0, -20 </SoftBoundMin>
-	<SoftBoundMax>	 20, 180, 20 </SoftBoundMax>
+
+	<SoftBoundMin>	-40, 0, -40 </SoftBoundMin>
+	<SoftBoundMax>	 40, 100, 40 </SoftBoundMax>
 	
     <VolMin0>		 -10,   5, -10	</VolMin0>
-	<VolMax0>		  10,  5,  10	</VolMax0>
-
-	<VolMin1>		 -20, 12, -10	</VolMin1>
-	<VolMax1>		  -2, 32,  10	</VolMax1>
-	<VolMin2>		-135, 2,	-15	</VolMin2>
-	<VolMax2>		-35,32,	-15	</VolMax2>
-	<VolMin3>		45, 1,	 15	</VolMin3>
-	<VolMax3>		-25, 25, 35	</VolMax3>
-	<VolMin4>		25, 1,	-30	</VolMin4>
-	<VolMax4>		-45,25,	-15	</VolMax4>
+	<VolMax0>		  10,  35,  10	</VolMax0>
 	
 	<FSA>  1 </FSA> 
 	<BoundViscFactor> -1 </BoundViscFactor>
@@ -68,10 +58,12 @@
 	<DP_cohesion> 1.0 </DP_cohesion>
 	<BoundXZdamp> 0.3 </BoundXZdamp>
 	<Sleepvel> 0.00000001 </Sleepvel>
+
+	<!-- flip/mpm grid -->
 </MultiScene>
 
 <BoundInfo id="1">
-	<Viscosity>	207		</Viscosity>
+	<Viscosity>	1.0		</Viscosity>
 	<RestDensity>	600.0		</RestDensity>
 	<Mass>		0.00020543	</Mass>
 	<BoundStiff>	5000	</BoundStiff>

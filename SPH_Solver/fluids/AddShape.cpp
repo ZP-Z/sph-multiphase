@@ -275,8 +275,10 @@ void FluidSystem::LoadBoundary(std::string boundfile){
 	CalcBoundarySpacing();
 
     FILE* fp = fopen(boundfile.c_str(), "r");
-    if (fp==NULL)
+    if (fp==NULL){
         printf("null boundary file");
+		return;
+	}
     boundaryPArray.clear();
     
     char buffer[1000];
@@ -301,56 +303,56 @@ void FluidSystem::LoadBoundary(std::string boundfile){
 }
 
 void FluidSystem::SetupAddWall(cfloat3 min, cfloat3 max){
- //   cfloat3 pos;
-	//int n = 0, p;
-	//float dx, dy, dz, x, y, z;
-	//int cntx, cnty, cntz;
+    cfloat3 pos;
+	int n = 0, p;
+	float dx, dy, dz, x, y, z;
+	int cntx, cnty, cntz;
 
- //   float spacing = boundarySpacing;
-	//cntx = ceil( (max.x-min.x) / spacing );
-	//cntz = ceil( (max.z-min.z) / spacing );
-	//
-	////rotation initialization
-	//
-	//int cnt = cntx * cntz;
-	//int xp, yp, zp, c2;
-	//float odd;
+    float spacing = boundarySpacing;
+	cntx = ceil( (max.x-min.x) / spacing );
+	cntz = ceil( (max.z-min.z) / spacing );
+	
+	//rotation initialization
+	
+	int cnt = cntx * cntz;
+	int xp, yp, zp, c2;
+	float odd;
 
-	//dx = max.x-min.x;
-	//dy = max.y-min.y;
-	//dz = max.z-min.z;
-	//
-	//c2 = cnt/2;
+	dx = max.x-min.x;
+	dy = max.y-min.y;
+	dz = max.z-min.z;
+	
+	c2 = cnt/2;
 
-	//float randx[3]={0,0,0};
-	//float ranlen = 0.2;
+	float randx[3]={0,0,0};
+	float ranlen = 0.2;
 
-	//for (float y = min.y; y <= max.y; y += spacing ) {	
-	//	for (int xz=0; xz < cnt; xz++ ) {
-	//		x = min.x + (xz % int(cntx))*spacing;
-	//		z = min.z + (xz / int(cntx))*spacing;
-	//		
-	//		p = AddParticle ();
-	//		if ( p != -1 ) {
-	//			n++;
-	//			/*
-	//			randx[0] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
-	//			randx[1] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
-	//			randx[2] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
-	//			*/
-	//			(mPos+p)->Set ( x+randx[0],y+randx[1],z+randx[2]);
- //               
- //               mClr[p] = COLORA( 1,1,1,0.7);
+	for (float y = min.y; y <= max.y; y += spacing ) {	
+		for (int xz=0; xz < cnt; xz++ ) {
+			x = min.x + (xz % int(cntx))*spacing;
+			z = min.z + (xz / int(cntx))*spacing;
+			
+			p = AddParticle ();
+			if ( p != -1 ) {
+				n++;
+				/*
+				randx[0] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
+				randx[1] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
+				randx[2] = (float)rand()/RAND_MAX * ranlen - ranlen*0.5;
+				*/
+				displayBuffer[p].pos.Set( x,y,z);
+				if(z>0)
+					displayBuffer[p].color.Set(1,1,1,0);
+				else
+					displayBuffer[p].color.Set(1, 1, 1, 0.1);
+				displayBuffer[p].type = 1;
 
-	//			m_restMass[p] = hostCarrier.bmass;
-	//			m_restDensity[p] = hostCarrier.bRestdensity;			
-	//			m_visc[p] = hostCarrier.viscArr[0];
-	//			MF_type[p] = 0;
- //               mIsBound[p] = 1;
-
-	//		}
-	//	}
-	//}	
+				calculationBuffer[p].mass = hostCarrier.bmass;
+				calculationBuffer[p].restdens = hostCarrier.bRestdensity;
+				calculationBuffer[p].visc = hostCarrier.bvisc;
+			}
+		}
+	}	
 }
 
 void FluidSystem::SetupAddOpenBox(cfloat3 min, cfloat3 max, float thickness) {

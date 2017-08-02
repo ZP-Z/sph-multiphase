@@ -62,9 +62,10 @@ struct ParamCarrier {
 	//boundary particle
 	float bmass;
 	float bRestdensity;
+	float bvisc;
 
 
-	//grid parameter
+	//sorting grid parameter
 	float cellsize;
 	int searchnum;
 	int neighbornum;
@@ -73,6 +74,15 @@ struct ParamCarrier {
 	cfloat3 gridIdfac;
 	cint3 gridres;
 	int gridtotal;
+
+
+	//flip/mpm grid
+	float mpmcellsize;
+	cfloat3 mpmXmin, mpmXmax;
+	cint3 mpmRes;
+	int mpmNodeNum;
+
+
 
 	//tensile instability
 	float w_deltax;
@@ -91,13 +101,12 @@ struct ParamCarrier {
 };
 
 
-
-
 struct displayPack {
 	cfloat3 pos;
 	cfloat4 color;
 	int type;
 };
+
 struct calculationPack {
 	cfloat3 vel;
 	cfloat3 veleval;
@@ -110,45 +119,9 @@ struct calculationPack {
 	cfloat3 accel;
 	//bool isbound;
 };
+
 //remain unsorted
 struct IntermediatePack {
 
 };
 
-struct bufList {
-	//Particle properties
-
-	
-
-	displayPack* displayBuffer;
-	calculationPack* calcBuffer;
-	IntermediatePack* intmBuffer;
-
-	//For sorting
-	char*			msortbuf;
-	int*			mgridcnt;
-	int*			mgridoff;
-	uint*			mgcell;
-	uint*			mgndx;
-	int*			MFidTable;
-	uint*			midsort;
-	//End sorting
-
-	//Mpm Grid
-	//Split Grid For Phases!
-	float*          mpmMass;
-	cfloat3*         mpmVel;
-	cfloat3*         mpmForce;
-	float*          mpmTensor;
-
-	float*          mpmAlpha;
-
-	uint*           mpmGid;    //mpmSize
-	uint*           mpmIdSort; //mpmSize
-	int*            mpmGridVList; //mpmSize
-	int*            mpmGridCnt;//gridSize
-	int*            mpmGridOff; //gridSize
-
-	cfloat3*         mpmPos;
-
-};// End particle&grid buffers
