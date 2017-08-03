@@ -69,6 +69,9 @@
     <ClInclude Include="fluids\MpmSolver.cuh">
       <Filter>fluid\CudaCode</Filter>
     </ClInclude>
+    <ClInclude Include="fluids\sph_solid.cuh">
+      <Filter>fluid\CudaCode</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="fluids\fluid_system_kern.cuh">
@@ -109,6 +112,9 @@
       <Filter>stokesian</Filter>
     </CudaCompile>
     <CudaCompile Include="fluids\MpmSolver.cu">
+      <Filter>fluid\CudaCode</Filter>
+    </CudaCompile>
+    <CudaCompile Include="fluids\sph_solid.cu">
       <Filter>fluid\CudaCode</Filter>
     </CudaCompile>
   </ItemGroup>

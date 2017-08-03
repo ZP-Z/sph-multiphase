@@ -20,7 +20,7 @@
 	<RestDensity> 600 </RestDensity>
 	<IntStiff>		0.03	 </IntStiff>
 	<ExtStiff>	0000.0	</ExtStiff>
-	<ExtDamp>	100.0		</ExtDamp>
+	<ExtDamp>	0.0		</ExtDamp>
 	<ScaleP>	1	</ScaleP>
 	<ScaleDis>	0.9	</ScaleDis>
 	<PlaneGravDir>	0,-9.8,0	</PlaneGravDir>

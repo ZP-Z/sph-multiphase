@@ -200,6 +200,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <CudaCompile Include="fluids\MpmSolver.cu" />
+    <CudaCompile Include="fluids\sph_solid.cu" />
     <CudaCompile Include="stokesian\Mobility.cu" />
     <None Include="fluids\fluid_system_host.cuh" />
     <None Include="fluids\fluid_system_kern.cuh" />
@@ -245,6 +246,7 @@
     <ClInclude Include="fluids\fluidMath.cuh" />
     <ClInclude Include="fluids\fluid_system.h" />
     <ClInclude Include="fluids\MpmSolver.cuh" />
+    <ClInclude Include="fluids\sph_solid.cuh" />
     <ClInclude Include="fluids\svd3_cuda.h" />
     <ClInclude Include="SolverGUI.h" />
     <ClInclude Include="stokesian\Mobility.cuh" />

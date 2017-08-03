@@ -117,11 +117,12 @@ struct calculationPack {
 	float visc;
 	int bornid;
 	cfloat3 accel;
+	cmat3 deformGrad;
 	//bool isbound;
 };
 
 //remain unsorted
 struct IntermediatePack {
-
+	cmat3 stress;
 };
 

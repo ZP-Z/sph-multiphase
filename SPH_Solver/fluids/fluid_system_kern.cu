@@ -132,7 +132,7 @@ __global__ void CountingSortFull_ ( bufList buf, int pnum )
 	}
 	else{
 		buf.mgcell[sort_ndx] = GRID_UNDEF;
-		buf.displayBuffer[i].pos.Set(-1000,-1000,-1000);
+		buf.displayBuffer[sort_ndx].pos.Set(-1000,-1000,-1000);
 		//buf.mpos[sort_ndx] = cfloat3(-1000, -1000, -1000);
 	}
 }

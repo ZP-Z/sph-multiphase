@@ -97,7 +97,7 @@ public:
 	//void RunSimulateMultiCUDAFull();
     //void RunMpmSolution();
 	void RunSimpleSPH();
-	//void RunSolid();
+	void RunSolid();
 
 	void LiquidToBubble();
 

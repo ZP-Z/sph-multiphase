@@ -11,6 +11,7 @@
 #include "fluid_system_host.cuh"		
 #include "fluid_system_kern.cuh"
 #include "MpmSolver.cuh"
+#include "sph_solid.cuh"
 
 #include "thrust\device_vector.h"	//thrust libs
 #include "thrust\sort.h" 
@@ -497,18 +498,18 @@ void ComputeMpmForce(){
 }
 
 //Newly updated 
-void ComputeSolidTensor(){
+void ComputeSolidTensorCUDA(){
 	//Get Density
 	//ComputeDensity_CUDA<<<fcuda.numBlocks, fcuda.numThreads>>>(fbuf, fcuda.pnum);
-	cudaDeviceSynchronize();
+	//cudaDeviceSynchronize();
 
 	//velocity gradient, Strain, Stress
-	//ComputeSolidTensor_CUDA<<<fcuda.numBlocks, fcuda.numThreads>>>(fbuf, fcuda.pnum);
+	ComputeSolidTensor<<<fcuda.numBlocks, fcuda.numThreads>>>(fbuf, fcuda.pnum);
 	cudaDeviceSynchronize();
 }
 
-void ComputeSolidForce(){
-	//ComputeSolidForce_CUDA<<<fcuda.numBlocks, fcuda.numThreads>>>(fbuf, fcuda.pnum);
+void ComputeSolidForceCUDA(){
+	ComputeSolidForce<<<fcuda.numBlocks, fcuda.numThreads>>>(fbuf, fcuda.pnum);
 	cudaDeviceSynchronize();
 }
 

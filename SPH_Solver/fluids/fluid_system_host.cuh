@@ -22,10 +22,8 @@
 	 
 #ifndef DEF_HOST_CUDA
 #define DEF_HOST_CUDA
-	#include "..\\fluids\\multifluid_def.h"
 
-	#include <vector_types.h>	
-	#include <driver_types.h>			// for cudaStream_t
+#include "..\\fluids\\multifluid_def.h"
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include <cuda_runtime.h>
@@ -81,8 +79,8 @@
 	void MpmGetMomentumCUDA();
 
 
-	void ComputeSolidTensor();
-	void ComputeSolidForce();
+	void ComputeSolidTensorCUDA();
+	void ComputeSolidForceCUDA();
 
 	void computeNumBlocks(int numPnts, int maxThreads, int &numBlocks, int &numThreads);
 

@@ -61,6 +61,7 @@ void FluidSystem::ResetParameters()
 	outputNo = 0;
 	pointNum = 0;
 	lastTime = 0.0f;
+	bSnapshot = false;
 }
 
 void FluidSystem::AllocateParticles(int cnt)
@@ -381,31 +382,6 @@ void FluidSystem::SetupSimpleSphCase(){
 //}
 
 
-//
-//void FluidSystem::RunSolid(){
-//	cTime start;
-//	
-//	//------------------Sorting-------------------
-//	InitialSortCUDA(0x0, 0x0, 0x0);
-//	SortGridCUDA(0x0);
-//	CountingSortFullCUDA_(0x0);
-//	record(PTIME_SORT, "Full Sort CUDA", start);
-//	start.update();
-//	//Velocity Gradient, Strain, Stress
-//	ComputeSolidTensor();
-//	record(PTIME_PRESS, "Stress", start);
-//	start.update();
-//	//Force
-//	ComputeSolidForce();
-//	record(PTIME_FORCE, "Force", start);
-//	start.update();
-//	//Advance
-//	MfAdvanceCUDA(m_Time, m_DT, m_Param[PSIMSCALE]);
-//	record(PTIME_ADVANCE, "Advance CUDA", start);
-//
-//	TransferFromCUDA();
-//}
-
 
 cTime start;
 
@@ -424,7 +400,7 @@ void FluidSystem::CheckTimer(const char* msg){
 void FluidSystem::Run (int width, int height)
 {
 	
-	runMode = 1;
+	runMode = 2;
 
 	switch( runMode){
 	case 0:	
@@ -434,7 +410,7 @@ void FluidSystem::Run (int width, int height)
 		RunSimpleSPH();
 		break;
 	case 2:
-		//RunSolid();
+		RunSolid();
 		break;
 	}
 
@@ -482,7 +458,30 @@ void FluidSystem::RunSimpleSPH() {
 	TransferFromCUDA(fbuf);
 }
 
+void FluidSystem::RunSolid() {
+	ClearTimer();
 
+	//------------------Sorting-------------------
+	InitialSortCUDA(0x0, 0x0, 0x0);
+	SortGridCUDA(0x0);
+	CountingSortFullCUDA_(0x0);
+	CheckTimer("sorting");
+
+	
+	//Strain, Stress
+	ComputeSolidTensorCUDA();
+	CheckTimer("Strain-Stress");
+
+	//Force
+	ComputeSolidForceCUDA();
+	CheckTimer("Force");
+
+	//Advance
+	MfAdvanceCUDA(0, hostCarrier.dt, hostCarrier.simscale);
+	CheckTimer("advance");
+
+	TransferFromCUDA(fbuf);
+}
 
 
 void FluidSystem::EmitParticles (int cat)
