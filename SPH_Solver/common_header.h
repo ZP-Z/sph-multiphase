@@ -16,8 +16,9 @@
 
 #define MAX_FLUIDNUM 3
 
-#define FLUID 0
-#define BOUNDARY 1
+#define TYPE_FLUID 0
+#define TYPE_BOUNDARY 1
+#define TYPE_ELASTIC 2
 
 typedef unsigned int			uint;
 typedef unsigned short int		ushort;
@@ -82,6 +83,8 @@ struct ParamCarrier {
 	cint3 mpmRes;
 	int mpmNodeNum;
 
+	//solid
+	float solidK;
 
 
 	//tensile instability
@@ -118,7 +121,9 @@ struct calculationPack {
 	int bornid;
 	cfloat3 accel;
 	cmat3 deformGrad;
-	//bool isbound;
+	
+	cfloat3 X; //reference position
+	cmat3 invA;
 };
 
 //remain unsorted

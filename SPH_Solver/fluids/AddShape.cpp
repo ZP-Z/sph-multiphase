@@ -8,7 +8,7 @@
 
 
 
-void FluidSystem::SetupAddBubble(cfloat3 min, cfloat3 max, float spacing, int constitution){
+//void FluidSystem::SetupAddBubble(cfloat3 min, cfloat3 max, float spacing, int constitution){
    /* cfloat3 pos;
 	int n = 0, p;
 	float dx, dy, dz, x, y, z;
@@ -54,7 +54,7 @@ void FluidSystem::SetupAddBubble(cfloat3 min, cfloat3 max, float spacing, int co
 		}
 	}	
 	printf("%d fluid has %d particles\n",constitution,n);*/
-}
+//}
 
 //void FluidSystem::SetupAddBound(BI2Reader bi2reader,int boundtype)
 //{
@@ -170,7 +170,7 @@ void FluidSystem::SetupAddBubble(cfloat3 min, cfloat3 max, float spacing, int co
 //	printf("%d fluid has %d particles\n",0,n);
 //}
 
-void FluidSystem::SetupAddSolid( cfloat3 min, cfloat3 max, float spacing, int composition){
+//void FluidSystem::SetupAddSolid( cfloat3 min, cfloat3 max, float spacing, int composition){
 	
 	//cfloat3 pos;
 	//int n = 0, p;
@@ -251,7 +251,7 @@ void FluidSystem::SetupAddSolid( cfloat3 min, cfloat3 max, float spacing, int co
 	//	}
 	//}	
 	//printf("%d solid has %d particles\n",0,n);
-}
+//}
 
 void read(FILE* fp, cfloat3& dst){
     fscanf(fp, "%f,%f,%f", &dst.x, &dst.y, &dst.z);
@@ -341,7 +341,7 @@ void FluidSystem::SetupAddWall(cfloat3 min, cfloat3 max){
 					displayBuffer[p].color.Set(1,1,1,0);
 				else
 					displayBuffer[p].color.Set(1, 1, 1, 0.1);
-				displayBuffer[p].type = 1;
+				displayBuffer[p].type = TYPE_BOUNDARY;
 
 				calculationBuffer[p].mass = hostCarrier.bmass;
 				calculationBuffer[p].restdens = hostCarrier.bRestdensity;

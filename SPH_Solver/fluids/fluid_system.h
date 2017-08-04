@@ -15,8 +15,7 @@
 #define GRID_UCHAR			0xFF
 #define GRID_UNDEF			4294967295
 
-#define FLUID 0
-#define BOUNDARY 1
+
 
 #define ROUND_EMIT 0
 #define SQUARE_EMIT 1
@@ -41,7 +40,7 @@ public:
 	void Setup ();
 		
 	void ResetParameters ();
-	void ParseXML();
+	void ParseXML(int caseid);
 	void SetupSpacing ();
 	void SetupGridAllocate ();
 	void BeforeFirstRun();
@@ -50,6 +49,7 @@ public:
 	
 
 	void SetupSimpleSphCase();
+	void SetupSolidCase();
 
 
 	void AllocateParticles(int cnt);
@@ -66,10 +66,10 @@ public:
 
 
 	//Code Generate Entities
-	void SetupMfAddVolume( cfloat3 min, cfloat3 max, float spacing, cfloat3 offs, int cat);// cat: category label
+	void AddFluidVolume( cfloat3 min, cfloat3 max, float spacing, cfloat3 offs, int cat);// cat: category label
 	//void SetupMfAddDeformVolume( cfloat3 min, cfloat3 max, float spacing, cfloat3 offs, int type);
-	void SetupAddSolid( cfloat3 min, cfloat3 max, float spacing, int cat);
-    void SetupAddBubble( cfloat3 min, cfloat3 max, float spacing, int constitution);
+	void AddDeformableVolume( cfloat3 min, cfloat3 max, float spacing, int cat);
+	void SetupAddBubble( cfloat3 min, cfloat3 max, float spacing, int constitution);
 
 	//Code Generate Boundaries
     void LoadBoundary(std::string boundfile);
@@ -157,6 +157,6 @@ public:
 	
 	void SetupMPMGrid();
 	void ReleaseMPMGrid();
-	void CopyMPMFormDevice();
+	void CopyMPMFromDevice();
 	void IndexSortMpmNode();
 };

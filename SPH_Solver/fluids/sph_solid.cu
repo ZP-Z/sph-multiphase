@@ -77,39 +77,40 @@ extern __device__ ParamCarrier paramCarrier;
 //	buf.mf_restdensity[i] = sum;
 //}
 
-__device__ void contributeVGrad(float* result, int i, cfloat3 ipos, cfloat3 ivel, int cell, bufList buf)
-{
-	float dsq, c;
-	register float r2 = simData.r2;
+//__device__ void contributeVGrad(float* result, int i, cfloat3 ipos, cfloat3 ivel, int cell, bufList buf)
+//{
+//	float dsq, c;
+//	register float r2 = simData.r2;
+//
+//	cfloat3 dist, jvel;
+//	float cmterm;
+//
+//	if (buf.mgridcnt[cell] == 0) return;
+//
+//	int cfirst = buf.mgridoff[cell];
+//	int clast = cfirst + buf.mgridcnt[cell];
+//
+//	for (int j = cfirst; j < clast; j++) {
+//		
+//		jvel = buf.calcBuffer[j].veleval;
+//
+//		dist = (ipos - buf.displayBuffer[j].pos);
+//		dist *= paramCarrier.simscale;
+//		dsq = (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z);
+//
+//		if (dsq < r2 && dsq > 0) {
+//			dsq = sqrt(dsq);
+//			c = (simData.psmoothradius - dsq);
+//			cmterm = simData.spikykern * c * c / dsq * buf.calcBuffer[j].mass * buf.calcBuffer[j].dens;
+//			//cmterm = simData.spikykern * c * c / dsq;
+//			jvel = (jvel-ivel) * cmterm;
+//			result[0] += jvel.x * dist.x;	result[1] += jvel.x * dist.y;	result[2] += jvel.x * dist.z;
+//			result[3] += jvel.y * dist.x;	result[4] += jvel.y * dist.y;	result[5] += jvel.y * dist.z;
+//			result[6] += jvel.z * dist.x;	result[7] += jvel.z * dist.y;	result[8] += jvel.z * dist.z;
+//		}
+//	}
+//}
 
-	cfloat3 dist, jvel;
-	float cmterm;
-
-	if (buf.mgridcnt[cell] == 0) return;
-
-	int cfirst = buf.mgridoff[cell];
-	int clast = cfirst + buf.mgridcnt[cell];
-
-	for (int j = cfirst; j < clast; j++) {
-		
-		jvel = buf.calcBuffer[j].veleval;
-
-		dist = (ipos - buf.displayBuffer[j].pos);
-		dist *= paramCarrier.simscale;
-		dsq = (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z);
-
-		if (dsq < r2 && dsq > 0) {
-			dsq = sqrt(dsq);
-			c = (simData.psmoothradius - dsq);
-			cmterm = simData.spikykern * c * c / dsq * buf.calcBuffer[j].mass * buf.calcBuffer[j].dens;
-			//cmterm = simData.spikykern * c * c / dsq;
-			jvel = (jvel-ivel) * cmterm;
-			result[0] += jvel.x * dist.x;	result[1] += jvel.x * dist.y;	result[2] += jvel.x * dist.z;
-			result[3] += jvel.y * dist.x;	result[4] += jvel.y * dist.y;	result[5] += jvel.y * dist.z;
-			result[6] += jvel.z * dist.x;	result[7] += jvel.z * dist.y;	result[8] += jvel.z * dist.z;
-		}
-	}
-}
 
 //__device__ void Drucker_Prager_Tensor(bufList buf, float* plastic, float* strain, float* tensor, int pid) {
 //
@@ -470,17 +471,193 @@ __device__ void contributeVGrad(float* result, int i, cfloat3 ipos, cfloat3 ivel
 //}
 
 
-__global__ void ComputeSolidTensor(bufList fbuf, int pnum) {
-	//velocity gradient nabla v
+/*----------------------------------
 
-	//update deformation gradient F
+	accumulative for plastic
+
+------------------------------------*/
+
+__device__ void contributeVGrad(cmat3& result, int i, bufList buf, int cell)
+{
+	if (buf.mgridcnt[cell] == 0)
+		return;
+
+	float dsq, c;
+	register float r2 = simData.r2;
+	cfloat3 ipos = buf.displayBuffer[i].pos;
+	cfloat3 ivel = buf.calcBuffer[i].vel;
+
+	cfloat3 dist, jvel;
+	float cmterm;
+
+	
+
+	int cfirst = buf.mgridoff[cell];
+	int clast = cfirst + buf.mgridcnt[cell];
+
+	for (int j = cfirst; j < clast; j++) {
+
+		jvel = buf.calcBuffer[j].vel;
+
+		dist = (ipos - buf.displayBuffer[j].pos);
+		dist *= paramCarrier.simscale;
+		dsq = (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z);
+
+		if (dsq < r2 && dsq > 0) {
+			dsq = sqrt(dsq);
+			c = (simData.psmoothradius - dsq);
+			cmterm = simData.spikykern * c * c / dsq * buf.calcBuffer[j].mass * buf.calcBuffer[j].dens;
+			//cmterm = simData.spikykern * c * c / dsq;
+			jvel = (jvel - ivel) * cmterm;
+			result[0][0] += jvel.x * dist.x;	result[0][1] += jvel.x * dist.y;	result[0][2] += jvel.x * dist.z;
+			result[1][0] += jvel.y * dist.x;	result[1][1] += jvel.y * dist.y;	result[1][2] += jvel.y * dist.z;
+			result[2][0] += jvel.z * dist.x;	result[2][1] += jvel.z * dist.y;	result[2][2] += jvel.z * dist.z;
+		}
+	}
+}
+
+__global__ void ComputeSolidTensor(bufList buf, int pnum) {
+
+	uint i = blockIdx.x * blockDim.x + threadIdx.x;
+	if(i>=pnum)
+		return;
+	if(buf.displayBuffer[i].type != TYPE_ELASTIC)
+		return;
+
+	//velocity gradient nabla v
+	uint gc = buf.mgcell[i];
+	if(gc==GRID_UNDEF)
+		return;
+	cmat3 velGrad;
+	velGrad.Set(0.0f);
+	
+	for(int c=0; c<simData.gridAdjCnt; c++)
+		contributeVGrad(velGrad, i, buf, gc+simData.gridAdj[c]);
+
+	//deformation gradient F
+	cmat3 tmp;
+	mat3prod(velGrad, buf.calcBuffer[i].deformGrad, tmp);
+	for (int k=0; k<9; k++) {
+		buf.calcBuffer[i].deformGrad.data[k] += tmp.data[k] * paramCarrier.dt;
+	}	
+	tmp = buf.calcBuffer[i].deformGrad;
 
 	//get strain epsilon
+	cmat3 tmp2;
+	mat3transpose(tmp, tmp2);
+	cmat3 tmp3;
+	mat3prod(tmp,tmp2,tmp3);
+	tmp3[0][0] -= 1;
+	tmp3[1][1] -= 1;
+	tmp3[2][2] -= 1;
 
 	//get Cauchy stress sigma
+	for(int k=0; k<9; k++)
+		tmp3.data[k] *= paramCarrier.solidK;
+	buf.intmBuffer[i].stress = tmp3;
 
 }
 
-__global__ void ComputeSolidForce(bufList fbuf, int pnum) {
+__device__ void ContributeSolidForce(cfloat3& result, int i, bufList buf, int cell) {
+	if (buf.mgridcnt[cell] == 0)
+		return;
+
+	float dsq, c;
+	register float r2 = simData.r2;
+	cfloat3 ipos = buf.displayBuffer[i].pos;
+
+	cfloat3 dist;
+	float cmterm;
+
+	int cfirst = buf.mgridoff[cell];
+	int clast = cfirst + buf.mgridcnt[cell];
+	cmat3 stressij;
+	float idens,jdens;
+	idens = buf.calcBuffer[i].dens;
+
+	for (int j = cfirst; j < clast; j++) {
+
+		dist = (ipos - buf.displayBuffer[j].pos);
+		dist *= paramCarrier.simscale;
+		dsq = (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z);
+
+		if (dsq < r2 && dsq > 0) {
+			dsq = sqrt(dsq);
+			c = (simData.psmoothradius - dsq);
+			jdens = buf.calcBuffer[j].dens;
+
+			if (buf.displayBuffer[j].type == TYPE_ELASTIC){
+				
+				cmterm = simData.spikykern * c * c / dsq * buf.calcBuffer[j].mass * jdens * idens;
+
+				for(int k=0; k<9; k++)
+					stressij.data[k] = (buf.intmBuffer[i].stress.data[k] + buf.intmBuffer[j].stress.data[k]);
+
+				cfloat3 tmp;
+				mvprod(stressij, dist, tmp);
+				tmp *= cmterm;
+				result += tmp;
+
+				/*if (buf.calcBuffer[i].bornid==0) {
+					printf("stressij\n");
+					stressij.Print();
+					printf("\n");
+				}*/
+			}
+		}
+	}
+}
+
+__global__ void ComputeSolidForce(bufList buf, int pnum) {
+	uint i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i>=pnum)
+		return;
+	if (buf.displayBuffer[i].type != TYPE_ELASTIC)
+		return;
+
+	uint gc = buf.mgcell[i];
+	if (gc==GRID_UNDEF)
+		return;
+	
+	cfloat3 accel(0,0,0);
+	for (int c=0; c<simData.gridAdjCnt; c++)
+		ContributeSolidForce(accel, i, buf, gc+simData.gridAdj[c]);
+	
+	buf.calcBuffer[i].accel = accel;
+
+	/*if (buf.calcBuffer[i].bornid==0) {
+		printf("%f %f %f\n", accel.x, accel.y, accel.z);
+		printf("\n");
+	}*/
+}
+
+
+/*----------------------------------
+
+	hyperelastic material
+
+-----------------------------------*/
+
+
+__device__ void contributeDeformGrad(cmat3& res, int i, bufList buf, int cell) {
+
+}
+
+//with reference shape
+__global__ void ComputeSolidTensor_X(bufList buf, int pnum) {
+
+}
+
+__device__ void contributeSolidForce_X(bufList buf, int pnum) {
+
+}
+
+__global__ void  ComputeSolidForce_X(bufList buf, int pnum) {
+
+}
+
+__global__ void ComputeInvA(bufList buf, int pnum) {
+	
+
 
 }

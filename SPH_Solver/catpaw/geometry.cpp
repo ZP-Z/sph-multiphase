@@ -1,34 +1,6 @@
 #include "geometry.h"
 
 
-
-void  mat3add(cmat3& a, cmat3& b, cmat3& c) {
-	for (int i=0; i<9; i++)
-		c.data[i] = a.data[i]+b.data[i];
-}
-
-void  mat3sub(cmat3& a, cmat3& b, cmat3& c) {
-	for (int i=0; i<9; i++)
-		c.data[i] = a.data[i]-b.data[i];
-}
-
-void  mat3prod(cmat3& a, cmat3& b, cmat3& c) {
-	for (int i=0; i<3; i++) {
-		for (int j=0; j<3; j++) {
-			c.data[i*3+j] = a.data[i*3]*b.data[j]+ a.data[i*3+1]*b.data[3+j] + a.data[i*3+2]*b.data[6+j];
-		}
-	}
-}
-
-void  mvprod(cmat3& m, cfloat3& v, cfloat3& c) {
-	cfloat3 tmp;
-	tmp.x = m.data[0]*v.x + m.data[1]*v.y + m.data[2]*v.z;
-	tmp.y = m.data[3]*v.x + m.data[4]*v.y + m.data[5]*v.z;
-	tmp.z = m.data[6]*v.x + m.data[7]*v.y + m.data[8]*v.z;
-	c=tmp;
-}
-
-
 void  RotateX(cfloat3& a, float b) {
 	float tmp[9]={1,0,0,    0,cos(b),-sin(b),    0,sin(b),cos(b)};
 	cmat3 tmpmat;

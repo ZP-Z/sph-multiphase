@@ -36,13 +36,12 @@ void updateParam(FluidParams* paramCPU){
 //get particle index id
 __global__ void InitialSort ( bufList buf, int pnum )
 {
-	uint i = __mul24(blockIdx.x, blockDim.x) + threadIdx.x;	// particle index				
+	uint i = blockIdx.x * blockDim.x + threadIdx.x;	// particle index				
 	if ( i >= pnum ) return;
 	register cfloat3 gridMin = simData.gridMin;
 	register cfloat3 gridDelta = simData.gridDelta;
 	register cint3 gridRes = simData.gridRes;
 	register cint3 gridScan = simData.gridScanMax;
-//	register float poff = simData.psmoothradius / simData.psimscale;
 
 	register int		gs;
 	register cfloat3		gcf;
@@ -50,80 +49,64 @@ __global__ void InitialSort ( bufList buf, int pnum )
 
 	gcf = (buf.displayBuffer[i].pos - gridMin) * gridDelta; 
 	gc = cint3( int(gcf.x), int(gcf.y), int(gcf.z) );
-	/*if(buf.MFid[i]==10000){
-		printf("%f %f %f %f %f %f\n",buf.displayBuffer[i].pos.x,buf.displayBuffer[i].pos.y,buf.displayBuffer[i].pos.z,
-			gridMin.x,gridMin.y,gridMin.z);
-		printf("gc %d %d %d\n",gc.x,gc.y,gc.z);
-	}*/
+	
 	gs = (gc.y * gridRes.z + gc.z)*gridRes.x + gc.x;
 	if ( gc.x >= 1 && gc.x <= gridScan.x && gc.y >= 1 && gc.y <= gridScan.y && gc.z >= 1 && gc.z <= gridScan.z ) {
 		buf.mgcell[i] = gs;											// Grid cell insert.
 		buf.midsort[i] = i;
-//		buf.mgndx[i] = atomicAdd ( &buf.mgridcnt[ gs ], 1 );		// Grid counts.
-//		gcf = (-cfloat3(poff,poff,poff) + buf.displayBuffer[i].pos - gridMin) * gridDelta;
-//		gc = make_int3( int(gcf.x), int(gcf.y), int(gcf.z) );
-//		gs = ( gc.y * gridRes.z + gc.z)*gridRes.x + gc.x;
-		//buf.mcluster[i] = gs;				-- make sure it is allocated!
 	} else {
 		buf.mgcell[i] = GRID_UNDEF;
 		buf.midsort[i] = i;
-		//buf.mcluster[i] = GRID_UNDEF;		-- make sure it is allocated!
 	}
-	/*if (buf.MFid[i]==0) {
-		printf("i %d\n", buf.mgcell[i]);
-	}*/
+
 }
 
 //markup the head and tail of each cell
 __global__ void CalcFirstCnt ( bufList buf, int pnum )
 {
-	uint i = __mul24(blockIdx.x, blockDim.x) + threadIdx.x;
+	uint i = blockIdx.x * blockDim.x + threadIdx.x;
 	if (i>=pnum) return;
 	if ((i == 0 || buf.mgcell[i]!=buf.mgcell[i-1]))
 	{
-		if (buf.mgcell[i]!=GRID_UNDEF)buf.mgridoff[buf.mgcell[i]] = i;
+		if (buf.mgcell[i]!=GRID_UNDEF)
+			buf.mgridoff[buf.mgcell[i]] = i; //head id - gridoff
 	}
-	__syncthreads();
-	if (i!=0 && buf.mgcell[i]!=buf.mgcell[i-1] && buf.mgcell[i-1]!=GRID_UNDEF)
-		buf.mgridcnt[buf.mgcell[i-1]] = i;
-	if (i == pnum-1 && buf.mgcell[i]!=GRID_UNDEF)
-		buf.mgridcnt[buf.mgcell[i]] = i + 1;
 	
+	if (i!=0 && buf.mgcell[i]!=buf.mgcell[i-1] && buf.mgcell[i-1]!=GRID_UNDEF)
+		buf.mgridcnt[buf.mgcell[i-1]] = i; //tail id + 1 - gridcnt
+	
+	if (i == pnum-1 && buf.mgcell[i]!=GRID_UNDEF)
+		buf.mgridcnt[buf.mgcell[i]] = i + 1;	
 }
+
 __global__ void GetCnt ( bufList buf, int pnum )
 {
-	uint i = __mul24(blockIdx.x, blockDim.x) + threadIdx.x;		// particle index
+	uint i = blockIdx.x * blockDim.x + threadIdx.x;		// particle index
 	if (i>=pnum) return ;
 	if (buf.mgcell[i]!=GRID_UNDEF)
 	{
 		buf.mgndx[i] = i - buf.mgridoff[buf.mgcell[i]];
-		if (buf.mgndx[i] == 0)
-			buf.mgridcnt[buf.mgcell[i]] -= buf.mgridoff[buf.mgcell[i]];
+
+		if (buf.mgndx[i] == 0) // first particle of the grid, once
+			buf.mgridcnt[buf.mgcell[i]] -= buf.mgridoff[buf.mgcell[i]]; //cnt = tail - head
 	}
 }
 
 //deep copy sort
-__global__ void CountingSortFull_ ( bufList buf, int pnum )
+__global__ void RearrangeData( bufList buf, int pnum )
 {
 	//for each new position, find old particle and read value
-	uint i = __mul24(blockIdx.x, blockDim.x) + threadIdx.x;		// particle index				
+	uint i = blockIdx.x * blockDim.x + threadIdx.x;		// particle index				
 	if ( i >= pnum ) return;
 
-	//for each old particle, find new position and write
-	//uint icell = *(uint*) (buf.msortbuf + pnum*BUF_GCELL + i*sizeof(uint) );
-	//uint indx =  *(uint*) (buf.msortbuf + pnum*BUF_GNDX + i*sizeof(uint) );
-	//int sort_ndx = buf.mgridoff[ icell ] + indx;				// global_ndx = grid_cell_offet + particle_offset
-	//i = buf.midsort[i];
-	
-	int exId = buf.midsort[i];
+	int exId = buf.midsort[i]; //original id
 	int cell = buf.mgcell[i];
 	int sort_ndx = i;
 	i = exId;
 
 	
 	if ( cell != GRID_UNDEF ) {
-		//buf.mgrid[ sort_ndx ] = sort_ndx;		
-
+		
 		buf.MFidTable[ buf.calcBuffer[sort_ndx].bornid ] = sort_ndx;
 		
 		buf.displayBuffer[sort_ndx] = *(displayPack*)(buf.msortbuf+pnum*BUF_DISPLAYBUF+i*sizeof(displayPack));
@@ -133,7 +116,6 @@ __global__ void CountingSortFull_ ( bufList buf, int pnum )
 	else{
 		buf.mgcell[sort_ndx] = GRID_UNDEF;
 		buf.displayBuffer[sort_ndx].pos.Set(-1000,-1000,-1000);
-		//buf.mpos[sort_ndx] = cfloat3(-1000, -1000, -1000);
 	}
 }
 
@@ -153,7 +135,7 @@ __device__ void findNearest(int i, float& mindis, int cell, bufList buf)
 	int clast = cfirst + buf.mgridcnt[cell];
 	for (int j = cfirst; j < clast; j++) {
 		//j = buf.mgrid[cndx];
-		if (buf.displayBuffer[i].type != BOUNDARY) {
+		if (buf.displayBuffer[i].type != TYPE_BOUNDARY) {
 			dist = p - buf.displayBuffer[j].pos;
 			dsq = dot(dist, dist);
 
@@ -169,7 +151,7 @@ __device__ void findNearest(int i, float& mindis, int cell, bufList buf)
 }
 __global__ void mfFindNearest (bufList buf,int pnum)
 {
-	uint i = __mul24(blockIdx.x, blockDim.x) + threadIdx.x;				
+	uint i = blockIdx.x * blockDim.x + threadIdx.x;				
 	if ( i >= pnum ) return;
 	
 	// Get search cell
@@ -180,7 +162,7 @@ __global__ void mfFindNearest (bufList buf,int pnum)
 	cfloat3 pos = buf.displayBuffer[i].pos;
 	float mindis = 65535;
 
-	if (buf.displayBuffer[i].type == BOUNDARY) //boundary particles
+	if (buf.displayBuffer[i].type == TYPE_BOUNDARY) //boundary particles
 	{
 		buf.midsort[i] = i;
 		buf.calcBuffer[i].mass = simData.pmass;
@@ -213,7 +195,7 @@ __device__ void contributeDensity_boundary(uint i, float& res, uint cell, bufLis
 
 	for (int j = cfirst; j < clast; j++) {
 
-		if ( buf.displayBuffer[j].type != BOUNDARY )
+		if ( buf.displayBuffer[j].type != TYPE_BOUNDARY )
 			continue;
 
 		dist = p - buf.displayBuffer[j].pos;
@@ -396,12 +378,6 @@ __device__ cfloat3 contributeForce_new(int i, cfloat3 ipos, cfloat3 iveleval, fl
 			pmterm = - cmterm1 * buf.calcBuffer[i].restdens * buf.calcBuffer[j].dens *  (ipress ) *idens*idens;
 			force += dist * pmterm;
 			
-			
-			//printf("%f\n",buf.calcBuffer[j].dens);
-			//vmr = iveleval - buf.mveleval[j];
-			//vmterm = cmterm * (ivisc+buf.mf_visc[j]) * idens;
-			//force += vmterm * vmr;
-		//		
 			//artificial boundary viscosity			
 			vmr = iveleval - buf.calcBuffer[j].veleval;
 			float pi_ij = vmr.x*dist.x + vmr.y*dist.y + vmr.z*dist.z;
@@ -446,6 +422,143 @@ __global__ void ComputeForce (bufList buf, int pnum){
 
 }
 
+__global__ void AdvanceParticles(float time, float dt, float ss, bufList buf, int numPnts)
+{
+
+	uint i = blockIdx.x * blockDim.x + threadIdx.x;	// particle index				
+	if (i >= numPnts) return;
+	if (buf.displayBuffer[i].type==1)
+		return;
+
+	if (buf.mgcell[i] == GRID_UNDEF) {
+		buf.displayBuffer[i].pos = cfloat3(-1000, -1000, -1000);
+		buf.calcBuffer[i].vel = cfloat3(0, 0, 0);
+		return;
+	}
+
+	// Get particle vars
+	register cfloat3 accel, norm;
+	register float diff, adj, accelLen;
+	register cfloat3 pos = buf.displayBuffer[i].pos;
+	register cfloat3 veval = buf.calcBuffer[i].vel;
+
+	accel = cfloat3(0, 0, 0);
+
+	// Soft Boundaries
+	// Y-axis
+	diff = simData.pradius - (pos.y - (simData.pboundmin.y + (pos.x-simData.pboundmin.x)*simData.pground_slope)) * ss;
+	float slope = 0;
+	if (diff > EPSILON) {
+		norm = cfloat3(-slope, 1.0 -slope, 0);
+		adj = simData.pextstiff * diff - simData.pdamp * dot(norm, veval);
+		norm *= adj; accel += norm;
+		//norm = -cfloat3(vel.x, 0, vel.z);
+		//accel += norm*10;
+
+		/*
+		float frifac, press;
+		press = buf.MFtensor[i*9]+buf.MFtensor[i*9+4]+buf.MFtensor[i*9+8];
+		if (press < 0.0f)
+		press = 0.0f;
+		float xzmod = sqrt(veval.x*veval.x + veval.z*veval.z);
+		if (xzmod > simData.sleepvel) {
+		frifac = simData.bdamp * press;
+		if (frifac < 15)
+		frifac = 15;
+		cfloat3 dv = cfloat3(-veval.x/xzmod, 0, -veval.z/xzmod) * frifac;
+		accel += dv;
+		}
+		else {
+		veval.x = 0;
+		veval.z = 0;
+		}*/
+
+	}
+
+	diff = simData.pradius - (simData.pboundmax.y - pos.y)*ss;
+	if (diff > EPSILON) {
+		norm = cfloat3(0, -1, 0);
+		adj = simData.pextstiff * diff - simData.pdamp * dot(norm, veval);
+		norm *= adj; accel += norm;
+	}
+
+	// X-axis
+	diff = simData.pradius - (pos.x - (simData.pboundmin.x + (sin(time*simData.pforce_freq)+1)*0.5 * simData.pforce_min))*ss;
+	if (diff > EPSILON) {
+		norm = cfloat3(1, 0, 0);
+		adj = (simData.pforce_min+1) * simData.pextstiff * diff - simData.pdamp * dot(norm, veval);
+		norm *= adj; accel += norm;//*scale_dens;
+	}
+
+	diff = simData.pradius - ((simData.pboundmax.x - (sin(time*simData.pforce_freq)+1)*0.5*simData.pforce_max) - pos.x)*ss;
+	if (diff > EPSILON) {
+		norm = cfloat3(-1, 0, 0);
+		adj = (simData.pforce_max+1) * simData.pextstiff * diff - simData.pdamp * dot(norm, veval);
+		norm *= adj; accel += norm;//*scale_dens;
+	}
+
+	// Z-axis
+	diff = simData.pradius - (pos.z - simData.pboundmin.z) * ss;
+	if (diff > EPSILON) {
+		norm = cfloat3(0, 0, 1);
+		adj = simData.pextstiff * diff - simData.pdamp * dot(norm, veval);
+		norm *= adj; accel += norm;//*scale_dens;
+	}
+
+	diff = simData.pradius - (simData.pboundmax.z - pos.z)*ss;
+	if (diff > EPSILON) {
+		norm = cfloat3(0, 0, -1);
+		adj = simData.pextstiff * diff - simData.pdamp * dot(norm, veval);
+		norm *= adj; accel += norm;//*scale_dens;
+	}
+
+	//End Soft Boundary
+
+	accel += buf.calcBuffer[i].accel;
+	accel += simData.pgravity;
+
+	// Accel Limit
+	accelLen = accel.x*accel.x + accel.y*accel.y + accel.z*accel.z;
+	if (accelLen > simData.AL2) {
+		accel *= simData.AL / sqrt(accelLen);
+	}
+
+	cfloat3 vel = buf.calcBuffer[i].vel;
+	//Velocity Limit
+	/*float vmod = sqrtf(dot(vel, vel));
+	if (vmod > simData.fluidVConstraint)
+	vel *= simData.fluidVConstraint / vmod;*/
+
+	cfloat3 vnext = accel*dt + vel;		// v(t+1/2) = v(t-1/2) + a(t) dt
+	buf.displayBuffer[i].pos += vnext*dt/ss;
+	buf.calcBuffer[i].veleval = (vel+vnext)*0.5;
+	buf.calcBuffer[i].vel = vnext;
+
+	//For Drift Velocity Calculation of Next Step
+	//buf.mforce[i] = simData.pgravity - accel;
+	//buf.mforce[i] = accel;
+	//buf.mforce[i] = cfloat3(0, 0, 0);
+
+	//Color Setting
+	/*if(buf.MFtype[i]==3)
+	buf.mclr[i] = COLORA(buf.mf_alpha[i*MAX_FLUIDNUM+2],buf.mf_alpha[i*MAX_FLUIDNUM+1],buf.mf_alpha[i*MAX_FLUIDNUM+0],0.6);
+	else
+	buf.mclr[i] = COLORA(buf.mf_alpha[i*MAX_FLUIDNUM+2],buf.mf_alpha[i*MAX_FLUIDNUM+1],buf.mf_alpha[i*MAX_FLUIDNUM+0],1);*/
+
+}
+
+
+
+
+
+/*-------------------------
+
+	Surface Tension - Yang Tao 
+
+--------------------------*/
+
+
+
 __device__ void contributeCover(int i, int cell, bufList buf){
 
 }
@@ -466,7 +579,7 @@ __global__ void SurfaceDetection(bufList buf, int pnum){
 }
 
 
-//Yang Tao Method
+
 __device__ void contributeSurfaceTensionYT(int i, cfloat3& res, int cell, bufList buf)
 {
     //Force here represents the acceleration
@@ -524,141 +637,12 @@ __global__ void SurfaceTension(bufList buf, int pnum){
 
 }
 
-__global__ void AdvanceParticles(float time, float dt, float ss, bufList buf, int numPnts)
-{
 
-	uint i = __mul24(blockIdx.x, blockDim.x) + threadIdx.x;	// particle index				
-	if (i >= numPnts) return;
-	if(buf.displayBuffer[i].type==1)
-		return;
+/*-------------------------
 
-	if (buf.mgcell[i] == GRID_UNDEF) {
-		buf.displayBuffer[i].pos = cfloat3(-1000, -1000, -1000);
-		buf.calcBuffer[i].vel = cfloat3(0, 0, 0);
-		return;
-	}
+	End Surface Tension
 
-	// Get particle vars
-	register cfloat3 accel, norm;
-	register float diff, adj, accelLen;
-	register cfloat3 pos = buf.displayBuffer[i].pos;
-	register cfloat3 veval = buf.calcBuffer[i].veleval;
-	
-	accel = cfloat3(0, 0, 0);
+--------------------------*/
 
-	// Soft Boundaries
-	// Y-axis
 
-	
-	diff = simData.pradius - (pos.y - (simData.pboundmin.y + (pos.x-simData.pboundmin.x)*simData.pground_slope)) * ss;
-	float slope = 0;
-	if (diff > EPSILON) {
-		norm = cfloat3(-slope, 1.0 -slope, 0);
-		adj = simData.pextstiff * diff - simData.pdamp * dot(norm, veval);
-		norm *= adj; accel += norm;
-		//norm = -cfloat3(vel.x, 0, vel.z);
-		//accel += norm*10;
 
-		/*
-		float frifac, press;
-		press = buf.MFtensor[i*9]+buf.MFtensor[i*9+4]+buf.MFtensor[i*9+8];
-		if (press < 0.0f)
-			press = 0.0f;
-		float xzmod = sqrt(veval.x*veval.x + veval.z*veval.z);
-		if (xzmod > simData.sleepvel) {
-			frifac = simData.bdamp * press;
-			if (frifac < 15)
-				frifac = 15;
-			cfloat3 dv = cfloat3(-veval.x/xzmod, 0, -veval.z/xzmod) * frifac;
-			accel += dv;
-		}
-		else {
-			veval.x = 0;
-			veval.z = 0;
-		}*/
-	
-	}
-
-	diff = simData.pradius - (simData.pboundmax.y - pos.y)*ss;
-
-	if (diff > EPSILON) {
-		norm = cfloat3(0, -1, 0);
-		adj = simData.pextstiff * diff - simData.pdamp * dot(norm, veval);
-		norm *= adj; accel += norm;
-	}
-
-	// X-axis
-	diff = simData.pradius - (pos.x - (simData.pboundmin.x + (sin(time*simData.pforce_freq)+1)*0.5 * simData.pforce_min))*ss;
-	//	if (diff>simData.pradius) diff += simData.pradius*1000;
-	if (diff > EPSILON) {
-		norm = cfloat3(1, 0, 0);
-		adj = (simData.pforce_min+1) * simData.pextstiff * diff - simData.pdamp * dot(norm, veval);
-		norm *= adj; accel += norm;//*scale_dens;
-	}
-	diff = simData.pradius - ((simData.pboundmax.x - (sin(time*simData.pforce_freq)+1)*0.5*simData.pforce_max) - pos.x)*ss;
-	//	if (diff>simData.pradius) diff += simData.pradius*1000;
-	if (diff > EPSILON) {
-		norm = cfloat3(-1, 0, 0);
-		adj = (simData.pforce_max+1) * simData.pextstiff * diff - simData.pdamp * dot(norm, veval);
-		norm *= adj; accel += norm;//*scale_dens;
-	}
-
-	// Z-axis
-	diff = simData.pradius - (pos.z - simData.pboundmin.z) * ss;
-	//	if (diff>simData.pradius) diff += simData.pradius*1000;
-	if (diff > EPSILON) {
-		norm = cfloat3(0, 0, 1);
-		adj = simData.pextstiff * diff - simData.pdamp * dot(norm, veval);
-		norm *= adj; accel += norm;//*scale_dens;
-	}
-	diff = simData.pradius - (simData.pboundmax.z - pos.z)*ss;
-	//	if (diff>simData.pradius) diff += simData.pradius*1000;
-	if (diff > EPSILON) {
-		norm = cfloat3(0, 0, -1);
-		adj = simData.pextstiff * diff - simData.pdamp * dot(norm, veval);
-		norm *= adj; accel += norm;//*scale_dens;
-	}
-	
-	accel += buf.calcBuffer[i].accel;
-	//if(buf.MFid[i]==0){
-		//printf("%f %f %f\n",buf.mforce[i].x, buf.mforce[i].y, buf.mforce[i].z);
-		//printf("dens %f\n",buf.mpress[i]);
-		//printf("pos %f %f %f\n",buf.displayBuffer[i].pos.x,buf.displayBuffer[i].pos.y,buf.displayBuffer[i].pos.z);
-	//}
-	accel += simData.pgravity;
-	// Accel Limit
-
-	accelLen = accel.x*accel.x + accel.y*accel.y + accel.z*accel.z;
-	if ( accelLen > simData.AL2 ) {
-	accel *= simData.AL / sqrt(accelLen);
-	}
-	cfloat3 vel = buf.calcBuffer[i].vel;
-	//if (buf.displayBuffer[i].type != 1)
-	//{
-
-		//Velocity Limit
-		/*float vmod = sqrtf(dot(vel, vel));
-		if (vmod > simData.fluidVConstraint)
-			vel *= simData.fluidVConstraint / vmod;*/
-
-		cfloat3 vnext = accel*dt + vel;		// v(t+1/2) = v(t-1/2) + a(t) dt
-		//buf.displayBuffer[i].pos += vnext * dt / ss;
-		buf.displayBuffer[i].pos += vnext*dt/ss;
-		buf.calcBuffer[i].veleval = (vel+vnext)*0.5;
-		buf.calcBuffer[i].vel = vnext;
-		//buf.accel[i] = accel;
-
-		//For Drift Velocity Calculation of Next Step
-		//buf.mforce[i] = simData.pgravity - accel;
-		//buf.mforce[i] = accel;
-		//buf.mforce[i] = cfloat3(0, 0, 0);
-
-		//Color Setting
-		/*if(buf.MFtype[i]==3)
-		buf.mclr[i] = COLORA(buf.mf_alpha[i*MAX_FLUIDNUM+2],buf.mf_alpha[i*MAX_FLUIDNUM+1],buf.mf_alpha[i*MAX_FLUIDNUM+0],0.6);
-		else
-		buf.mclr[i] = COLORA(buf.mf_alpha[i*MAX_FLUIDNUM+2],buf.mf_alpha[i*MAX_FLUIDNUM+1],buf.mf_alpha[i*MAX_FLUIDNUM+0],1);*/
-
-	//}
-
-}

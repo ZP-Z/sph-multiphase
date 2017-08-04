@@ -54,11 +54,10 @@
 	void FluidParamCUDA(ParamCarrier& param);
 
 	//new sort
-	void InitialSortCUDA( uint* gcell, uint* ccell, int* gcnt );
-	void SortGridCUDA( int* goff );
-	void CountingSortFullCUDA_( uint* ggrid );
-	void initSPH(float* restdensity,int* mftype);
-	void InitSolid();
+	void GetParticleIndexCUDA();
+	void GetGridListCUDA();
+	void RearrageDataCUDA();
+	
 
 	//Multifluid simulation
 	void MfComputePressureCUDA();
@@ -78,9 +77,14 @@
 	void MpmColorTestCUDA();
 	void MpmGetMomentumCUDA();
 
-
+	//Solid
 	void ComputeSolidTensorCUDA();
 	void ComputeSolidForceCUDA();
+
+	void ComputeSolidTensorX_CUDA();
+	void ComputeSolidForceX_CUDA();
+	void InitializeSolid_CUDA();
+
 
 	void computeNumBlocks(int numPnts, int maxThreads, int &numBlocks, int &numThreads);
 

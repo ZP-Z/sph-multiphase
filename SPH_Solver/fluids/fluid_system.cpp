@@ -22,23 +22,27 @@ FluidSystem::FluidSystem ()
 {
 }
 
+#define RUN_SPH 1
+#define RUN_SOLID 2
 
 void FluidSystem::Setup ()
 {
 	
 	ResetParameters();
-
-	ParseXML();
+	
+	runMode = RUN_SOLID;
 
     //SetupMpmCase();
-	SetupSimpleSphCase();
+	//SetupSimpleSphCase();
+	SetupSolidCase();
 
 	SetupGridAllocate ();	// Setup grid
 
 	SetupDevice();
 	
-	SetupMPMGrid();
-	//BeforeFirstRun();
+	//SetupMPMGrid();
+	
+	InitializeSolid_CUDA();
 }
 
 void FluidSystem::Exit ()
@@ -112,26 +116,13 @@ void FluidSystem::SetupGridAllocate ()
 
 void FluidSystem::SetupDevice() {
 
-	
-
 	FluidSetupCUDA(hostCarrier); //allocate buffers
 	FluidParamCUDA(hostCarrier); //some parameters
 	
-
 	CarryParam(hostCarrier);
 	TransferToCUDA(fbuf);
 
 }
-
-void FluidSystem::BeforeFirstRun() {
-	//Sorting
-	InitialSortCUDA(0x0, 0x0, 0x0);
-	SortGridCUDA(0x0);
-	CountingSortFullCUDA_(0x0);
-
-	InitSolid(); //clear tensor buffer
-}
-
 
 
 //Adding Particles
@@ -265,12 +256,14 @@ void FluidSystem::BeforeFirstRun() {
 
 void FluidSystem::SetupSimpleSphCase(){
 	
+	ParseXML(2);
+
 	//adjust the parametres according to the scale parameter
-	scaleP3 = pow(scaleP,1.0/3.0);
+	/*scaleP3 = pow(scaleP,1.0/3.0);
 	hostCarrier.mass /= scaleP;
 	hostCarrier.smoothradius /= scaleP3;
 	hostCarrier.radius /= scaleP3;
-	hostCarrier.num *= scaleP;
+	hostCarrier.num *= scaleP;*/
 
 	hostCarrier.cellsize = hostCarrier.smoothradius;
 	
@@ -283,11 +276,34 @@ void FluidSystem::SetupSimpleSphCase(){
 	AllocateParticles ( maxPointNum );
 	SetupSpacing ();
 	
-	SetupMfAddVolume(fvmin[0], fvmax[0], pSpacing, cfloat3(0, 0, 0), 2);
-	//SetupAddSolid(volumes[0], volumes[1], m_Param[PSPACING], 0);
-    //SetupAddBubble(volumes[2], volumes[3], m_Param[PSPACING]*1.2, 1);
-
+	AddFluidVolume(fvmin[0], fvmax[0], pSpacing, cfloat3(0, 0, 0), 2);
+	
     LoadBoundary("cfg\\boundary.cfg");
+	
+	hostCarrier.num = pointNum;
+}
+
+
+
+
+void FluidSystem::SetupSolidCase() {
+
+	ParseXML(2);
+
+	hostCarrier.cellsize = hostCarrier.smoothradius;
+
+	for (int k=0; k<fluidnum; k++) {
+		hostCarrier.massArr[k] = hostCarrier.mass * massratio[k];
+		hostCarrier.densArr[k] = hostCarrier.restdensity * densratio[k];
+		hostCarrier.viscArr[k] = hostCarrier.viscosity * viscratio[k];
+	}
+
+	AllocateParticles(maxPointNum);
+	SetupSpacing();
+
+	AddDeformableVolume(fvmin[0], fvmax[0], pSpacing, 2);
+	
+	//LoadBoundary("cfg\\boundary.cfg");
 	//LoadBoundary("cfg\\Cup.cfg");
 
 	hostCarrier.num = pointNum;
@@ -400,7 +416,7 @@ void FluidSystem::CheckTimer(const char* msg){
 void FluidSystem::Run (int width, int height)
 {
 	
-	runMode = 2;
+	
 
 	switch( runMode){
 	case 0:	
@@ -436,9 +452,9 @@ void FluidSystem::RunSimpleSPH() {
 	ClearTimer();
 
 	//------------------Sorting-------------------
-	InitialSortCUDA(0x0, 0x0, 0x0);
-	SortGridCUDA(0x0);
-	CountingSortFullCUDA_(0x0);
+	GetParticleIndexCUDA();
+	GetGridListCUDA();
+	RearrageDataCUDA();
 	CheckTimer("sorting");
 
 	//-------------Compute Pressure--------------
@@ -462,11 +478,14 @@ void FluidSystem::RunSolid() {
 	ClearTimer();
 
 	//------------------Sorting-------------------
-	InitialSortCUDA(0x0, 0x0, 0x0);
-	SortGridCUDA(0x0);
-	CountingSortFullCUDA_(0x0);
+	GetParticleIndexCUDA();
+	GetGridListCUDA();
+	RearrageDataCUDA();
 	CheckTimer("sorting");
 
+	//density, pressure
+	MfComputePressureCUDA();
+	CheckTimer("pressure");
 	
 	//Strain, Stress
 	ComputeSolidTensorCUDA();
@@ -574,12 +593,13 @@ int FluidSystem::AddParticle()
 	calculationBuffer[n].vel.Set(0, 0, 0);
 	calculationBuffer[n].veleval.Set(0, 0, 0);
 	calculationBuffer[n].bornid = n;
+	calculationBuffer[n].deformGrad.Set(unitMatrix);
 
 	pointNum++;
 	return n;
 }
 
-void FluidSystem::SetupMfAddVolume(cfloat3 min, cfloat3 max, float spacing, cfloat3 offs, int cat)
+void FluidSystem::AddFluidVolume(cfloat3 min, cfloat3 max, float spacing, cfloat3 offs, int cat)
 {
 	if (pointNum==maxPointNum)
 		printf("Max pointnum reached.\n");
@@ -604,7 +624,7 @@ void FluidSystem::SetupMfAddVolume(cfloat3 min, cfloat3 max, float spacing, cflo
 					displayBuffer[p].pos = pos;
 					//displayBuffer[p].color.Set((float)rand()/RAND_MAX, (float)rand()/RAND_MAX, (float)rand()/RAND_MAX,1.0);
 					displayBuffer[p].color.Set(0.2, 0.5, 0.8, 0.5);
-					displayBuffer[p].type = 0;
+					displayBuffer[p].type = TYPE_FLUID;
 
 					calculationBuffer[p].restdens = hostCarrier.densArr[cat];
 					calculationBuffer[p].mass = hostCarrier.massArr[cat];
@@ -616,10 +636,50 @@ void FluidSystem::SetupMfAddVolume(cfloat3 min, cfloat3 max, float spacing, cflo
 	printf("%d fluid has %d particles\n", cat, n);
 }
 
+void FluidSystem::AddDeformableVolume(cfloat3 min, cfloat3 max, float spacing, int cat)
+{
+	if (pointNum==maxPointNum)
+		printf("Max pointnum reached.\n");
+
+	cfloat3 pos;
+	int n = 0, p;
+	int cntx, cnty, cntz;
+	cfloat3 cnts = (max - min) / spacing;
+	cfloat3 center = min + (max-min)*0.5;
+
+	float randx[3];
+	float ranlen = 0.2;
+
+	for (int y = 0; y < cnts.y; y ++) {
+		for (int z=0; z < cnts.z; z++) {
+			for (int x=0; x < cnts.x; x++) {
+				cfloat3 rand3(rand(), rand(), rand());
+				rand3 = rand3/RAND_MAX*ranlen - ranlen*0.5;
+				pos = cfloat3(x, y, z)*spacing + min + rand3;
+
+				p = AddParticle();
+				if (p >= 0) {
+					displayBuffer[p].pos = pos;
+					displayBuffer[p].color.Set(0.8, 0.5, 0.2, 0.5);
+					displayBuffer[p].type = TYPE_ELASTIC;
+
+					calculationBuffer[p].restdens = hostCarrier.densArr[cat];
+					calculationBuffer[p].mass = hostCarrier.massArr[cat];
+					calculationBuffer[p].visc = hostCarrier.viscArr[cat];
+					
+					calculationBuffer[p].vel.y = (pos.x-center.x)/(max.x-min.x)*2.5;
+					calculationBuffer[p].X = pos;
+				}
+			}
+		}
+	}
+	printf("%d fluid has %d particles\n", cat, n);
+}
+
 using namespace tinyxml2;
 extern XMLElement* pele;
 
-void FluidSystem::ParseXML(){
+void FluidSystem::ParseXML(int caseid){
 	tinyxml2::XMLDocument doc;
 	int result = doc.LoadFile("scene.xml");
 	printf("return by open xml %d\n",result);
@@ -635,7 +695,7 @@ void FluidSystem::ParseXML(){
 	}
 
 	int tmp;
-	int caseid=2;
+	
 	while(true){
 		sceneElement -> QueryIntAttribute("id",&tmp);
 		if(tmp == caseid)
@@ -660,8 +720,10 @@ void FluidSystem::ParseXML(){
 	hostCarrier.volmin = XMLGetFloat3("VolMin");
 	hostCarrier.volmax = XMLGetFloat3("VolMax");
 
-	pele = sceneElement;
+
 	//scene specified
+	pele = sceneElement;
+	
 	maxPointNum = XMLGetInt("Num");
 	scaleP = XMLGetFloat("ScaleP");
 	fluidnum = XMLGetInt("FluidCount");
@@ -684,7 +746,9 @@ void FluidSystem::ParseXML(){
 	hostCarrier.extdamp = XMLGetFloat("ExtDamp");
 	hostCarrier.softminx = XMLGetFloat3("SoftBoundMin");
 	hostCarrier.softmaxx = XMLGetFloat3("SoftBoundMax");
+	hostCarrier.solidK = XMLGetFloat("SolidK");
 
+	//boundary
 	pele = boundElement;
 	hostCarrier.bmass = XMLGetFloat("Mass");
 	hostCarrier.bRestdensity = XMLGetFloat("RestDensity");
@@ -718,6 +782,7 @@ void FluidSystem::EmitUpdateCUDA(int startnum, int endnum, bufList& fbuf)
 }
 
 
+//-----------------	MPM Grid -----------------
 
 void FluidSystem::SetupMPMGrid() {
 	//parameter
@@ -750,10 +815,12 @@ void FluidSystem::ReleaseMPMGrid() {
 	delete nodevel;
 }
 
-void FluidSystem::CopyMPMFormDevice() {
+void FluidSystem::CopyMPMFromDevice() {
 	cudaMemcpy(nodevel, fbuf.mpmVel, sizeof(cfloat3)*hostCarrier.mpmNodeNum, cudaMemcpyDeviceToHost);
 }
 
-void FluidSystem::IndexSortMpmNode() {
-	IndexMPMSortCUDA();
-}
+//--------------------End MPM Grid-----------------
+
+
+//--------------------Solid------------------------
+

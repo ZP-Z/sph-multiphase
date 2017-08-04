@@ -1,5 +1,6 @@
 #include "fluidMath.cuh"
 #include <stdio.h>
+#include "geometry.h"
 
 __device__ void multiply_matrix3(float* a, float* b, float* c){
 	float d[9];
@@ -31,3 +32,4 @@ __device__ float det(float* a){
 	det -= (a[2]*a[4]*a[6] + a[1]*a[3]*a[8] + a[5]*a[7]*a[0]);
 	return det;
 }
+

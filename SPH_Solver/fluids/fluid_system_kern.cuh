@@ -88,7 +88,7 @@
 	//new sort
 	__global__ void InitialSort ( bufList buf, int pnum );
 	__global__ void CalcFirstCnt ( bufList buf, int pnum );
-	__global__ void CountingSortFull_ ( bufList buf, int pnum );
+	__global__ void RearrangeData ( bufList buf, int pnum );
 	__global__ void GetCnt ( bufList buf, int gnum );
 
 	__global__ void initDensity(bufList buf,int pnum);

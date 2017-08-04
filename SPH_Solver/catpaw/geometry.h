@@ -141,25 +141,64 @@ struct cint3 {
 
 struct cmat3 {
 	float data[9];
-	cmat3() {}
-	void Set(float mat[]) {
+	HDFUNC cmat3() {}
+	HDFUNC void Set(float mat[]) {
 		for (int i=0; i<9; i++) data[i] = mat[i];
 	}
-	void Print() {
+	HDFUNC void Set(float c) {
+		for(int i=0;i<9;i++) data[i]=c;
+	}
+	HDFUNC void Print() {
 		for (int i=0; i<3; i++) {
 			printf("%f %f %f\n", data[i*3], data[i*3+1], data[i*3+2]);
 		}
 	}
-	inline float* operator[](int i){
+	HDFUNC float* operator[](int i){
 		return &data[i*3];
 	}
+	
 };
 
-void mat3add(cmat3& a, cmat3& b, cmat3& c);
-void mat3sub(cmat3& a, cmat3& b, cmat3& c);
-void mat3prod(cmat3& a, cmat3& b, cmat3& c);
+//HDFUNC void mat3add(cmat3& a, cmat3& b, cmat3& c);
+//HDFUNC void mat3sub(cmat3& a, cmat3& b, cmat3& c);
+//HDFUNC void mat3prod(cmat3& a, cmat3& b, cmat3& c);
+//HDFUNC void mat3transpose(cmat3& a, cmat3& b);
 
-void mvprod(cmat3& m, cfloat3& v, cfloat3& c);
+HDFUNC __inline__ void  mat3add(cmat3& a, cmat3& b, cmat3& c) {
+	for (int i=0; i<9; i++)
+		c.data[i] = a.data[i]+b.data[i];
+}
+
+HDFUNC __inline__ void  mat3sub(cmat3& a, cmat3& b, cmat3& c) {
+	for (int i=0; i<9; i++)
+		c.data[i] = a.data[i]-b.data[i];
+}
+
+HDFUNC __inline__ void  mat3prod(cmat3& a, cmat3& b, cmat3& c) {
+	for (int i=0; i<3; i++) {
+		for (int j=0; j<3; j++) {
+			c.data[i*3+j] = a.data[i*3]*b.data[j]+ a.data[i*3+1]*b.data[3+j] + a.data[i*3+2]*b.data[6+j];
+		}
+	}
+}
+
+HDFUNC __inline__ void mat3transpose(cmat3& a, cmat3& b) {
+	cmat3 tmp;
+	tmp[0][0]=a[0][0]; tmp[0][1]=a[1][0]; tmp[0][2]=a[2][0];
+	tmp[1][0]=a[0][1]; tmp[1][1]=a[1][1]; tmp[1][2]=a[2][1];
+	tmp[2][0]=a[0][2]; tmp[2][1]=a[1][2]; tmp[2][2]=a[2][2];
+	b=tmp;
+}
+
+HDFUNC __inline__ void  mvprod(cmat3& m, cfloat3& v, cfloat3& c) {
+	cfloat3 tmp;
+	tmp.x = m.data[0]*v.x + m.data[1]*v.y + m.data[2]*v.z;
+	tmp.y = m.data[3]*v.x + m.data[4]*v.y + m.data[5]*v.z;
+	tmp.z = m.data[6]*v.x + m.data[7]*v.y + m.data[8]*v.z;
+	c=tmp;
+}
+
+HDFUNC void mvprod(cmat3& m, cfloat3& v, cfloat3& c);
 
 void RotateX(cfloat3& a, float b);
 void RotateY(cfloat3& a, float b);

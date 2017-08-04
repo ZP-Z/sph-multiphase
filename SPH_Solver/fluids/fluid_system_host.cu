@@ -218,8 +218,7 @@ void FluidParamCUDA (ParamCarrier& params){
 
 
 
-//Called in RunSimulateCudaFull
-void InitialSortCUDA( uint* gcell, uint* ccell, int* gcnt )
+void GetParticleIndexCUDA()
 {
 	cudaMemset ( fbuf.mgridcnt, 0,			fcuda.gridTotal * sizeof(int));
 	cudaMemset ( fbuf.mgridoff, 0,			fcuda.gridTotal * sizeof(int));
@@ -232,13 +231,8 @@ void InitialSortCUDA( uint* gcell, uint* ccell, int* gcnt )
 	}  
 	cudaThreadSynchronize ();
 
-	// Transfer data back if requested (for validation)
-	if (gcell != 0x0) {
-		CUDA_SAFE_CALL( cudaMemcpy ( gcell,	fbuf.mgcell,	fcuda.pnum*sizeof(uint),		cudaMemcpyDeviceToHost ) );		
-		CUDA_SAFE_CALL( cudaMemcpy ( gcnt,	fbuf.mgridcnt,	fcuda.gridTotal*sizeof(int),	cudaMemcpyDeviceToHost ) );
-	}
 }
-void SortGridCUDA( int* goff )
+void GetGridListCUDA()
 {
 
 	thrust::device_ptr<uint> dev_keysg(fbuf.mgcell);
@@ -264,7 +258,7 @@ void SortGridCUDA( int* goff )
 	}
 }
 
-void CountingSortFullCUDA_( uint* ggrid )
+void RearrageDataCUDA()
 {
 	// Transfer particle data to temp buffers
 	int n = fcuda.pnum;
@@ -279,7 +273,7 @@ void CountingSortFullCUDA_( uint* ggrid )
 		fprintf ( stderr, "CUDA ERROR:CopyToSortBufferCUDA: %s\n", cudaGetErrorString(error) );
 	} 
 
-	CountingSortFull_ <<< fcuda.numBlocks, fcuda.numThreads>>> ( fbuf, fcuda.pnum );		
+	RearrangeData <<< fcuda.numBlocks, fcuda.numThreads>>> ( fbuf, fcuda.pnum );
 	cudaThreadSynchronize ();
 
 	error = cudaGetLastError();
@@ -499,10 +493,6 @@ void ComputeMpmForce(){
 
 //Newly updated 
 void ComputeSolidTensorCUDA(){
-	//Get Density
-	//ComputeDensity_CUDA<<<fcuda.numBlocks, fcuda.numThreads>>>(fbuf, fcuda.pnum);
-	//cudaDeviceSynchronize();
-
 	//velocity gradient, Strain, Stress
 	ComputeSolidTensor<<<fcuda.numBlocks, fcuda.numThreads>>>(fbuf, fcuda.pnum);
 	cudaDeviceSynchronize();
@@ -513,7 +503,25 @@ void ComputeSolidForceCUDA(){
 	cudaDeviceSynchronize();
 }
 
-void InitSolid(){
-	//cudaMemset(fbuf.MFtensor, 0, sizeof(float)*9*fcuda.pnum);
-	//cudaMemset(fbuf.accel, 0, sizeof(cfloat3)*fcuda.pnum);
+
+void ComputeSolidTensorX_CUDA() {
+	//deformation gradient, Strain, Stress
+	ComputeSolidTensor_X<<<fcuda.numBlocks, fcuda.numThreads>>>(fbuf, fcuda.pnum);
+	cudaDeviceSynchronize();
+}
+
+void ComputeSolidForceX_CUDA() {
+	ComputeSolidForce_X<<<fcuda.numBlocks, fcuda.numThreads>>>(fbuf, fcuda.pnum);
+	cudaDeviceSynchronize();
+}
+
+void InitializeSolid_CUDA(){
+
+	GetParticleIndexCUDA();
+	GetGridListCUDA();
+	RearrageDataCUDA();
+
+	//calculate invA
+	ComputeInvA <<<fcuda.numBlocks, fcuda.numThreads>>>(fbuf, fcuda.pnum);
+	cudaThreadSynchronize();
 }
