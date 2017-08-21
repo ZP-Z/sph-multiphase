@@ -42,7 +42,7 @@ public:
 	void ResetParameters ();
 	void ParseXML(int caseid);
 	void SetupSpacing ();
-	void SetupGridAllocate ();
+	void SetupGrid ();
 	void BeforeFirstRun();
 	void SetupDevice();
 	
@@ -146,7 +146,7 @@ public:
 	std::vector<const char*> timerStrs;
 	std::vector<float> timerVals;
 
-	ParamCarrier hostCarrier;
+	
 
 
 	//mpm 

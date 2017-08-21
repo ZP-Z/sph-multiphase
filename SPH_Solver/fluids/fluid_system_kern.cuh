@@ -17,45 +17,18 @@
 #define BUF_CALCBUF (BUF_DISPLAYBUF + sizeof(displayPack))
 #define BUF_INTMBUF (BUF_CALCBUF + sizeof(calculationPack))
 
-	// Fluid Parameters (stored on both host and device)
+	// metadata
 	struct FluidParams {
-		int				numThreads, numBlocks;
-		int				gridThreads, gridBlocks;	
+		int	pnum;
+		int	szPnts;
+		int	numThreads, numBlocks;
 
-		int				szPnts, szHash, szGrid;
-		int				stride, pnum;
-		int				chk;
-		float			pdist, pmass, prest_dens;
-		float			pextstiff, pintstiff, pbstiff;
-		float			pradius, psmoothradius, r2, psimscale, pvisc;
-		float			pforce_min, pforce_max, pforce_freq, pground_slope;
-		float			pvel_limit, paccel_limit, pdamp;
-		cfloat3			pboundmin, pboundmax, pgravity; //p is soft bound
-		cfloat3			mb1,mb2;
-		float			AL, AL2, VL, VL2; //limits of acceleration and velocity
-		
-		float			poly6kern, spikykern, lapkern;
+		int	gridTotal;
+		int szGrid;
+		int	gridThreads, gridBlocks;	
 
-		float spikykernel;//not the derivative
-
-		cfloat3			gridSize, gridDelta, gridMin, gridMax;
-		cint3			gridRes, gridScanMax;
-		int				gridSrch, gridTotal, gridAdjCnt, gridActive;
-		float			test1,test2,test3;
-		int				gridAdj[64];
-		float			coLambdaK, cohesion;
-		//multi fluid parameters
-		float			mf_dens[MAX_FLUIDNUM];
-		float			mf_visc[MAX_FLUIDNUM];
-		float			mf_diffusion;
-		int				mf_catnum;
-		float			mf_dt;
-
-        int             mpmXl, mpmYl, mpmZl;
-        int             mpmSize;
-        int             mpmBlocks, mpmThreads;
-        float           mpmSpacing;
-
+        int mpmSize;
+        int mpmBlocks, mpmThreads;
     };
 
 	struct bufList {
@@ -102,7 +75,7 @@
 	__global__ void mfComputeAlphaAdvance( bufList buf, int pnum );
 	__global__ void mfComputeCorrection( bufList buf, int pnum );
 
-	__global__ void AdvanceParticles( float time, float dt, float ss, bufList buf, int numPnts );
+	__global__ void AdvanceParticles(bufList buf, int numPnts );
     
 
 	__global__ void ComputeDensityPressure(bufList buf,int pnum);
@@ -138,7 +111,6 @@
 	__global__ void ComputeSolidForce_CUDA(bufList buf,int pnum);
 	__global__ void ComputeDensity_CUDA(bufList buf, int pnum);
 
-    void updateParam( FluidParams* paramCPU );
 	void CarryParam(ParamCarrier& hostCarrier);
 
 	#define EPSILON				0.00001f

@@ -9,7 +9,7 @@
 #include "thrust\sort.h"
 #include "fluidMath.cuh"
 
-extern __device__ FluidParams	simData;
+//extern __device__ FluidParams	simData;
 extern __device__ ParamCarrier paramCarrier;
 
 //Begin MPM Solution
@@ -35,8 +35,11 @@ __global__ void initMpm(bufList buf, int mpmSize){
     int xid = i % mpmres.x;
     int zid = i / mpmres.x % mpmres.z;
 
-    cint3 gridRes = simData.gridRes;
-    cint3 gridScan = simData.gridScanMax;
+    cint3 gridRes = paramCarrier.gridres;
+    cint3 gridScan = gridRes;
+	gridScan.x -= 1;
+	gridScan.y -= 1;
+	gridScan.z -= 1;
 
 
     cfloat3 pos;
@@ -45,7 +48,7 @@ __global__ void initMpm(bufList buf, int mpmSize){
     buf.mpmPos[i] = pos;
 
 
-    cfloat3 gcf = (pos - simData.gridMin) * simData.gridDelta;
+    cfloat3 gcf = (pos - paramCarrier.gridmin) * paramCarrier.gridIdfac;
     cint3 gc = cint3 ( int ( gcf.x ), int ( gcf.y ), int ( gcf.z ) );    
     uint gs = (gc.y * gridRes.z + gc.z)*gridRes.x + gc.x;
     if (gc.x >= 1 && gc.x <= gridScan.x && gc.y >= 1 && gc.y <= gridScan.y && gc.z >= 1 && gc.z <= gridScan.z) {
@@ -71,8 +74,8 @@ __global__ void MpmColorTest(bufList buf, int mpmSize) {
 			return;
 		}
 
-		for (int c=0; c<simData.gridAdjCnt; c++) {
-			int cell = gc + simData.gridAdj[c];
+		for (int c=0; c<paramCarrier.neighbornum; c++) {
+			int cell = gc + paramCarrier.neighborid[c];
 			
 			if(buf.mgridcnt[cell]==0)
 				continue;
@@ -108,8 +111,8 @@ __global__ void MpmGetMomentum(bufList buf, int mpmSize) {
 	float weightsum=0;
 	float cellsize = paramCarrier.mpmcellsize;
 
-	for (int c=0; c<simData.gridAdjCnt; c++) {
-		int cell = gc + simData.gridAdj[c];
+	for (int c=0; c<paramCarrier.neighbornum; c++) {
+		int cell = gc + paramCarrier.neighborid[c];
 
 		if (buf.mgridcnt[cell]==0)
 			continue;

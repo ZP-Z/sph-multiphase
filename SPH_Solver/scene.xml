@@ -2,8 +2,8 @@
 	<IntStiff>		1.5	</IntStiff>
 	<ExtStiff>	0.5	</ExtStiff>
 	<AccelLimit>	1500.0		</AccelLimit>
-	<VelLimit>		1		</VelLimit>
-	<Gravity>	0,0,0		</Gravity>
+	<VelLimit>		100		</VelLimit>
+	<Gravity>	0,-9.8,0		</Gravity>
 	<VolMin> -60, -20, -60 </VolMin>
 	<VolMax> 60,  200,  60 </VolMax>
 </Fluid>
@@ -12,7 +12,7 @@
 	<Num> 100000 </Num>
 	<SimScale>		0.005		</SimScale>
 	<Name>		Test 	</Name>
-	<DT>			0.0001 </DT>
+	<DT>			0.0005 </DT>
 	<Radius> 0.01 </Radius>
 	<SmoothRadius> 0.015 </SmoothRadius>
 	<Viscosity>	 1.0		</Viscosity>
@@ -23,14 +23,14 @@
 	<ExtDamp>	0.0		</ExtDamp>
 	<ScaleP>	1	</ScaleP>
 	<ScaleDis>	0.9	</ScaleDis>
-	<PlaneGravDir>	0,0,0	</PlaneGravDir>
+	<PlaneGravDir>	0,-9.8,0	</PlaneGravDir>
 	<FluidCount> 3 </FluidCount>
 
 	<SoftBoundMin>	-40, 0, -40 </SoftBoundMin>
 	<SoftBoundMax>	 40, 100, 40 </SoftBoundMax>
 	
-    <VolMin0>		 -10,   15, -10	</VolMin0>
-	<VolMax0>		  10,  20,  10	</VolMax0>
+    <VolMin0>		 -10,   5, -10	</VolMin0>
+	<VolMax0>		  10,  25,  10	</VolMax0>
 	
 	<FSA>  1 </FSA> 
 	<BoundViscFactor> -1 </BoundViscFactor>
@@ -65,7 +65,7 @@
 </MultiScene>
 
 <BoundInfo id="1">
-	<Viscosity>	100.0		</Viscosity>
+	<Viscosity>	10.0		</Viscosity>
 	<RestDensity>	600.0		</RestDensity>
 	<Mass>		0.00010543	</Mass>
 	<BoundStiff>	5000	</BoundStiff>

@@ -6,7 +6,7 @@
 #include "fluid_system.h"
 #include "fluid_system_host.cuh"
 
-
+extern ParamCarrier hostCarrier;
 
 //void FluidSystem::SetupAddBubble(cfloat3 min, cfloat3 max, float spacing, int constitution){
    /* cfloat3 pos;
@@ -267,11 +267,12 @@ void FluidSystem::CalcBoundarySpacing() {
 	float bdens = hostCarrier.bRestdensity;
 
 	boundarySpacing = pow((bmass / bdens),1/3.0f)/hostCarrier.simscale;
-	printf("boundaryspacing %f\n",boundarySpacing);
+	printf("Boundary spacing: %f\n",boundarySpacing);
 }
 
 void FluidSystem::LoadBoundary(std::string boundfile){
 
+	printf("Loading boundaries.\n");
 	CalcBoundarySpacing();
 
     FILE* fp = fopen(boundfile.c_str(), "r");

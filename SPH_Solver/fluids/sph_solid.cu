@@ -11,7 +11,7 @@
 #include "thrust\sort.h"
 #include "fluidMath.cuh"
 
-extern __device__ FluidParams	simData;
+//extern __device__ FluidParams	simData;
 extern __device__ ParamCarrier paramCarrier;
 
 
@@ -483,7 +483,8 @@ __device__ void contributeVGrad(cmat3& result, int i, bufList buf, int cell)
 		return;
 
 	float dsq, c;
-	register float r2 = simData.r2;
+	float r2 = paramCarrier.smoothradius;
+	r2 *= r2;
 	cfloat3 ipos = buf.displayBuffer[i].pos;
 	cfloat3 ivel = buf.calcBuffer[i].vel;
 
@@ -505,8 +506,8 @@ __device__ void contributeVGrad(cmat3& result, int i, bufList buf, int cell)
 
 		if (dsq < r2 && dsq > 0) {
 			dsq = sqrt(dsq);
-			c = (simData.psmoothradius - dsq);
-			cmterm = simData.spikykern * c * c / dsq * buf.calcBuffer[j].mass * buf.calcBuffer[j].dens;
+			c = (paramCarrier.smoothradius - dsq);
+			cmterm = paramCarrier.kspikydiff * c * c / dsq * buf.calcBuffer[j].mass * buf.calcBuffer[j].dens;
 			//cmterm = simData.spikykern * c * c / dsq;
 			jvel = (jvel - ivel) * cmterm;
 			result[0][0] += jvel.x * dist.x;	result[0][1] += jvel.x * dist.y;	result[0][2] += jvel.x * dist.z;
@@ -531,8 +532,8 @@ __global__ void ComputeSolidTensor(bufList buf, int pnum) {
 	cmat3 velGrad;
 	velGrad.Set(0.0f);
 	
-	for(int c=0; c<simData.gridAdjCnt; c++)
-		contributeVGrad(velGrad, i, buf, gc+simData.gridAdj[c]);
+	for(int c=0; c<paramCarrier.neighbornum; c++)
+		contributeVGrad(velGrad, i, buf, gc+paramCarrier.neighborid[c]);
 
 	//deformation gradient F
 	cmat3 tmp;
@@ -563,7 +564,8 @@ __device__ void ContributeSolidForce(cfloat3& result, int i, bufList buf, int ce
 		return;
 
 	float dsq, c;
-	register float r2 = simData.r2;
+	float r2 = paramCarrier.smoothradius;
+	r2 *= r2;
 	cfloat3 ipos = buf.displayBuffer[i].pos;
 
 	cfloat3 dist;
@@ -583,12 +585,12 @@ __device__ void ContributeSolidForce(cfloat3& result, int i, bufList buf, int ce
 
 		if (dsq < r2 && dsq > 0) {
 			dsq = sqrt(dsq);
-			c = (simData.psmoothradius - dsq);
+			c = (paramCarrier.smoothradius - dsq);
 			jdens = buf.calcBuffer[j].dens;
 
 			if (buf.displayBuffer[j].type == TYPE_ELASTIC){
 				
-				cmterm = simData.spikykern * c * c / dsq * buf.calcBuffer[j].mass * jdens * idens;
+				cmterm = paramCarrier.kspikydiff * c * c / dsq * buf.calcBuffer[j].mass * jdens * idens;
 
 				for(int k=0; k<9; k++)
 					stressij.data[k] = (buf.intmBuffer[i].stress.data[k] + buf.intmBuffer[j].stress.data[k]);
@@ -620,8 +622,8 @@ __global__ void ComputeSolidForce(bufList buf, int pnum) {
 		return;
 	
 	cfloat3 accel(0,0,0);
-	for (int c=0; c<simData.gridAdjCnt; c++)
-		ContributeSolidForce(accel, i, buf, gc+simData.gridAdj[c]);
+	for (int c=0; c<paramCarrier.neighbornum; c++)
+		ContributeSolidForce(accel, i, buf, gc+paramCarrier.neighborid[c]);
 	
 	buf.calcBuffer[i].accel = accel;
 
@@ -657,7 +659,16 @@ __global__ void  ComputeSolidForce_X(bufList buf, int pnum) {
 }
 
 __global__ void ComputeInvA(bufList buf, int pnum) {
-	
+	uint i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i>=pnum)
+		return;
+	if (buf.displayBuffer[i].type != TYPE_ELASTIC)
+		return;
+
+	uint gc = buf.mgcell[i];
+	if (gc==GRID_UNDEF)
+		return;
+
 
 
 }

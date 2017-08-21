@@ -21,6 +21,7 @@ FluidParams		fcuda;
 bufList			fbuf;
 
 cudaError_t error;
+extern ParamCarrier hostCarrier;
 
 void cudaExit (int argc, char **argv)
 {
@@ -102,42 +103,11 @@ void FluidClearCUDA ()
 
 void FluidSetupCUDA(ParamCarrier& params){
 	fcuda.pnum = params.num;
-	fcuda.gridRes = params.gridres;
-	fcuda.gridSize = params.gridsize;
-	fcuda.gridDelta = params.gridIdfac;
-	fcuda.gridMin = params.gridmin;
-	fcuda.gridMax = params.gridmax;
 	fcuda.gridTotal = params.gridtotal;
-	fcuda.gridSrch = params.searchnum; //3
-	fcuda.gridAdjCnt = params.neighbornum;
-	fcuda.gridScanMax.x = params.gridres.x - params.searchnum;
-	fcuda.gridScanMax.y = params.gridres.y - params.searchnum;
-	fcuda.gridScanMax.z = params.gridres.z - params.searchnum;
-	//fcuda.chk = chk;
-	//fcuda.mf_up=0;
-
-	// Build Adjacency Lookup
-	int cell = 0;
-
-	for (int y=-1; y <= 1; y++)
-		for (int z=-1; z <=1; z++)
-			for (int x=-1; x <= 1; x++)
-				fcuda.gridAdj[cell++]  = y*fcuda.gridRes.z*fcuda.gridRes.x + z*fcuda.gridRes.x +  x;
-
-	/*printf ( "CUDA Adjacency Table\n");
-	for (int n=0; n < fcuda.gridAdjCnt; n++ ) {
-	printf ( "  ADJ: %d, %d\n", n, fcuda.gridAdj[n] );
-	}	*/
-
+	
 	// Compute number of blocks and threads
 	computeNumBlocks(fcuda.pnum, 384, fcuda.numBlocks, fcuda.numThreads);			// particles
 	computeNumBlocks(fcuda.gridTotal, 384, fcuda.gridBlocks, fcuda.gridThreads);		// grid cell
-	
-    /*printf ( "CUDA Allocate: \n" );
-	printf ( "  Pnts: %d, t:%dx%d=%d, Size:%d\n", fcuda.pnum, fcuda.numBlocks, fcuda.numThreads, fcuda.numBlocks*fcuda.numThreads, fcuda.szPnts);
-	printf ( "  Grid: %d, t:%dx%d=%d, bufGrid:%d, Res: %dx%dx%d\n", fcuda.gridTotal, fcuda.gridBlocks, fcuda.gridThreads, fcuda.gridBlocks*fcuda.gridThreads, fcuda.szGrid, (int) fcuda.gridRes.x, (int) fcuda.gridRes.y, (int) fcuda.gridRes.z );
-	*/
-
 
 	// Allocate particle buffers
 	//fcuda.szPnts = (fcuda.numBlocks  * fcuda.numThreads);
@@ -163,59 +133,7 @@ void FluidSetupCUDA(ParamCarrier& params){
 	
 
 	//MpmAllocateBuffer();
-
-	updateParam(&fcuda);
 }
-
-
-void FluidParamCUDA (ParamCarrier& params){
-	fcuda.psimscale = params.simscale;
-	fcuda.psmoothradius = params.smoothradius; //real smooth radius
-	fcuda.pradius = params.radius;
-	fcuda.r2 = params.smoothradius * params.smoothradius;
-	fcuda.pmass = params.mass;
-	fcuda.prest_dens = params.restdensity;
-	fcuda.pvisc = params.viscosity;
-	fcuda.pboundmin = params.softminx;
-	fcuda.pboundmax = params.softmaxx;
-	fcuda.pextstiff = params.extstiff;
-	fcuda.pintstiff = params.intstiff;
-//	fcuda.pbstiff = pbstiff;
-	fcuda.pdamp = params.extdamp;
-	//fcuda.pforce_min = fmin;
-	//fcuda.pforce_max = fmax;
-	//fcuda.pforce_freq = ffreq;
-	//fcuda.pground_slope = gslope;
-	fcuda.pgravity = params.gravity;
-	fcuda.AL = params.acclimit;
-	fcuda.AL2 = params.acclimit * params.acclimit;
-	fcuda.VL = params.vlimit;
-	fcuda.VL2 = params.vlimit * params.vlimit;
-
-	printf("Bound Min: %f %f %f\n", fcuda.pboundmin.x, fcuda.pboundmin.y, fcuda.pboundmin.z);
-	printf("Bound Max: %f %f %f\n", fcuda.pboundmax.x, fcuda.pboundmax.y, fcuda.pboundmax.z);
-
-	fcuda.pdist = pow(fcuda.pmass / fcuda.prest_dens, 1/3.0f);
-	fcuda.poly6kern = 315.0f / (64.0f * 3.141592 * pow(fcuda.psmoothradius, 9.0f));
-	fcuda.spikykern = -45.0f / (3.141592 * pow(fcuda.psmoothradius, 6.0f));
-	fcuda.spikykernel = 15 / (3.141592 * pow(fcuda.psmoothradius, 6.0f));
-	fcuda.lapkern = 45.0f / (3.141592 * pow(fcuda.psmoothradius, 6.0f));
-
-	//fcuda.mf_catnum = catnum;
-	//fcuda.mf_diffusion = diffusion;
-	fcuda.mf_dt = params.dt;
-	/*for (int i=0; i<MAX_FLUIDNUM; i++)
-	{
-		fcuda.mf_dens[i] = dens[i];
-		fcuda.mf_visc[i] = visc[i];
-	}*/
-
-	updateParam(&fcuda);
-}
-
-
-
-
 
 
 void GetParticleIndexCUDA()
@@ -300,19 +218,9 @@ void MpmAllocateBufferCUDA(ParamCarrier& param){
     cudaMalloc(&fbuf.mpmMass,   fcuda.mpmSize * sizeof(float));
 	cudaMalloc(&fbuf.mpmPos, fcuda.mpmSize * sizeof(cfloat3));
 	cudaMalloc(&fbuf.mpmVel, fcuda.mpmSize * sizeof(cfloat3));
-    //
     //cudaMalloc(&fbuf.mpmAlpha, fcuda.mpmSize * sizeof(float) * MAX_FLUIDNUM);
     //cudaMalloc(&fbuf.mpmForce, fcuda.mpmSize * sizeof(cfloat3) * splitnum);
-
-	//cint3 tmp = param.mpmRes;
-	//cudaMalloc(&fbuf.u,	(tmp.x+1)*tmp.y*tmp.z*sizeof(float));
-	//cudaMalloc(&fbuf.v, (tmp.x+1)*tmp.y*tmp.z*sizeof(float));
-	//cudaMalloc(&fbuf.w, (tmp.x+1)*tmp.y*tmp.z*sizeof(float));
-
-    //cudaMalloc(&fbuf.mpmTensor, fcuda.mpmSize * sizeof(float) * 9);
-    cudaMalloc(&fbuf.mpmGid,		fcuda.mpmSize * sizeof(uint));
-
-	updateParam(&fcuda);
+	cudaMalloc(&fbuf.mpmGid,		fcuda.mpmSize * sizeof(uint));
 }
 
 
@@ -336,7 +244,7 @@ void MpmGetMomentumCUDA() {
 void initSPH(float* restdensity,int* mftype){
 	
     //initDensity<<<fcuda.numBlocks, fcuda.numThreads>>>(fbuf, fcuda.pnum);
-	cudaThreadSynchronize();
+	//cudaThreadSynchronize();
 
 	/*CUDA_SAFE_CALL( cudaMemcpy( restdensity, fbuf.mf_restdensity, fcuda.pnum*sizeof(float), cudaMemcpyDeviceToHost));
 	CUDA_SAFE_CALL( cudaMemcpy( mftype,      fbuf.MFtype,         fcuda.pnum*sizeof(int),   cudaMemcpyDeviceToHost));
@@ -360,16 +268,9 @@ void initSPH(float* restdensity,int* mftype){
     //cudaThreadSynchronize();	
 }
 
+
 void MfComputePressureCUDA ()
 {
-	
-	/*mfFindNearest<<< fcuda.numBlocks, fcuda.numThreads>>> (fbuf, fcuda.pnum);
-	error = cudaGetLastError();
-	if (error != cudaSuccess) {
-		fprintf ( stderr, "CUDA ERROR: MfFindNearestVelCUDA: %s\n", cudaGetErrorString(error) );
-	}    
-	cudaDeviceSynchronize ();*/
-	
 	ComputeBoundaryVolume <<< fcuda.numBlocks, fcuda.numThreads>>> (fbuf, fcuda.pnum);
 	cudaDeviceSynchronize();
 
@@ -382,41 +283,41 @@ void MfComputePressureCUDA ()
 	}
 }
 
-void MfComputeDriftVelCUDA ()
-{
-    //mfComputeDriftVel<<< fcuda.numBlocks, fcuda.numThreads>>> ( fbuf, fcuda.pnum );
-	
-    error = cudaGetLastError();
-	if (error != cudaSuccess) {
-		fprintf ( stderr, "CUDA ERROR: MfComputeDriftVelCUDA: %s\n", cudaGetErrorString(error) );
-	}    
-	cudaThreadSynchronize ();
-}
+//void MfComputeDriftVelCUDA ()
+//{
+//    //mfComputeDriftVel<<< fcuda.numBlocks, fcuda.numThreads>>> ( fbuf, fcuda.pnum );
+//	
+//    error = cudaGetLastError();
+//	if (error != cudaSuccess) {
+//		fprintf ( stderr, "CUDA ERROR: MfComputeDriftVelCUDA: %s\n", cudaGetErrorString(error) );
+//	}    
+//	cudaThreadSynchronize ();
+//}
 
-void MfComputeAlphaAdvanceCUDA ()
-{
-	//mfComputeAlphaAdvance<<< fcuda.numBlocks, fcuda.numThreads>>> ( fbuf, fcuda.pnum );
-	
-    error = cudaGetLastError();
-	if (error != cudaSuccess) {
-		fprintf ( stderr, "CUDA ERROR: MfComputeAlphaAdvanceCUDA: %s\n", cudaGetErrorString(error) );
-	}    
-	cudaThreadSynchronize ();
-}
-void MfComputeCorrectionCUDA ()
-{
-	//mfComputeCorrection<<< fcuda.numBlocks, fcuda.numThreads>>> ( fbuf, fcuda.pnum );	
-	
-	error = cudaGetLastError();
-	if (error != cudaSuccess) {
-		fprintf ( stderr, "CUDA ERROR: MfComputeCorrectionCUDA: %s\n", cudaGetErrorString(error) );
-	}    
-	cudaThreadSynchronize ();
-}
+//void MfComputeAlphaAdvanceCUDA ()
+//{
+//	//mfComputeAlphaAdvance<<< fcuda.numBlocks, fcuda.numThreads>>> ( fbuf, fcuda.pnum );
+//	
+//    error = cudaGetLastError();
+//	if (error != cudaSuccess) {
+//		fprintf ( stderr, "CUDA ERROR: MfComputeAlphaAdvanceCUDA: %s\n", cudaGetErrorString(error) );
+//	}    
+//	cudaThreadSynchronize ();
+//}
+//void MfComputeCorrectionCUDA ()
+//{
+//	//mfComputeCorrection<<< fcuda.numBlocks, fcuda.numThreads>>> ( fbuf, fcuda.pnum );	
+//	
+//	error = cudaGetLastError();
+//	if (error != cudaSuccess) {
+//		fprintf ( stderr, "CUDA ERROR: MfComputeCorrectionCUDA: %s\n", cudaGetErrorString(error) );
+//	}    
+//	cudaThreadSynchronize ();
+//}
 
-void MfAdvanceCUDA ( float time , float dt, float ss )
+void MfAdvanceCUDA ()
 {
-    AdvanceParticles<<< fcuda.numBlocks, fcuda.numThreads>>> ( time, dt, ss, fbuf, fcuda.pnum );	
+    AdvanceParticles<<< fcuda.numBlocks, fcuda.numThreads>>> (fbuf, fcuda.pnum );	
 	
 	error = cudaGetLastError();
 	if (error != cudaSuccess) {
@@ -490,6 +391,12 @@ void ComputeMpmForce(){
     cudaThreadSynchronize();
 
 }
+
+
+
+
+
+
 
 //Newly updated 
 void ComputeSolidTensorCUDA(){

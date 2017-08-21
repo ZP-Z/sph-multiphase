@@ -946,7 +946,7 @@ void SolverGUI::Initialize(int argc, char** argv) {
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH |GLUT_MULTISAMPLE);
 	glutInitWindowSize((int)window_width, (int)window_height);
 	glutCreateWindow("Multiphase Nekobus");
-
+	
 
 
 

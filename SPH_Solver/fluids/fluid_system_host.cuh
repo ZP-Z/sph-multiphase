@@ -65,7 +65,7 @@
 	void MfComputeAlphaAdvanceCUDA();
 	void MfComputeCorrectionCUDA();  
 	void MfComputeForceCUDA ();	
-	void MfAdvanceCUDA ( float time , float dt, float ss );
+	void MfAdvanceCUDA ();
 
 	//Project-U changes computing force
 	void ComputeForceCUDA_ProjectU();

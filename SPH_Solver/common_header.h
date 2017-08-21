@@ -59,6 +59,11 @@ struct ParamCarrier {
 	float densArr[3];
 	float viscArr[3];
 
+	//sph kernel
+	float kpoly6;
+	float kspiky;
+	float kspikydiff;
+	float klaplacian;
 
 	//boundary particle
 	float bmass;
@@ -70,6 +75,7 @@ struct ParamCarrier {
 	float cellsize;
 	int searchnum;
 	int neighbornum;
+	int neighborid[27];
 	cfloat3 gridmin, gridmax;
 	cfloat3 gridsize;
 	cfloat3 gridIdfac;

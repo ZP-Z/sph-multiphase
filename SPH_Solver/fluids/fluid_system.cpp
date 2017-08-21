@@ -17,6 +17,9 @@ float unitMatrix[9] = {1,0,0,    0,1,0,     0,0,1};
 
 extern bufList	fbuf;
 extern FluidParams		fcuda;
+ParamCarrier hostCarrier;
+
+
 
 FluidSystem::FluidSystem ()
 {
@@ -30,19 +33,20 @@ void FluidSystem::Setup ()
 	
 	ResetParameters();
 	
-	runMode = RUN_SOLID;
+	runMode = RUN_SPH;
+	glutSetWindowTitle("Fluid SPH");
 
     //SetupMpmCase();
-	//SetupSimpleSphCase();
-	SetupSolidCase();
+	SetupSimpleSphCase();
+	//SetupSolidCase();
 
-	SetupGridAllocate ();	// Setup grid
+	SetupGrid ();	// Setup grid
 
 	SetupDevice();
 	
 	//SetupMPMGrid();
 	
-	InitializeSolid_CUDA();
+	//InitializeSolid_CUDA();
 }
 
 void FluidSystem::Exit ()
@@ -92,7 +96,7 @@ void FluidSystem::SetupSpacing ()
 
 }
 
-void FluidSystem::SetupGridAllocate ()
+void FluidSystem::SetupGrid ()
 {
 	float worldcellsize = hostCarrier.cellsize / hostCarrier.simscale;
 	
@@ -112,12 +116,18 @@ void FluidSystem::SetupGridAllocate ()
 	hostCarrier.gridtotal = hostCarrier.gridres.x * hostCarrier.gridres.y * hostCarrier.gridres.z;
 	hostCarrier.searchnum = 3;
 	hostCarrier.neighbornum = 27;
+
+	for(int i=0; i<3; i++)
+		for(int j=0; j<3; j++)
+			for(int k=0; k<3; k++)
+				hostCarrier.neighborid[i*9+j*3+k]=(i-1)*hostCarrier.gridres.x*hostCarrier.gridres.z+(j-1)*hostCarrier.gridres.x+(k-1);
+
 }
 
 void FluidSystem::SetupDevice() {
 
 	FluidSetupCUDA(hostCarrier); //allocate buffers
-	FluidParamCUDA(hostCarrier); //some parameters
+	//FluidParamCUDA(hostCarrier); //some parameters
 	
 	CarryParam(hostCarrier);
 	TransferToCUDA(fbuf);
@@ -266,7 +276,11 @@ void FluidSystem::SetupSimpleSphCase(){
 	hostCarrier.num *= scaleP;*/
 
 	hostCarrier.cellsize = hostCarrier.smoothradius;
-	
+	hostCarrier.kpoly6 = 315.0f / (64.0f * 3.141592 * pow(hostCarrier.smoothradius, 9.0f));
+	hostCarrier.kspiky =  15 / (3.141592 * pow(hostCarrier.smoothradius, 6.0f));
+	hostCarrier.kspikydiff = -45.0f / (3.141592 * pow(hostCarrier.smoothradius, 6.0f));
+	hostCarrier.klaplacian = 45.0f / (3.141592 * pow(hostCarrier.smoothradius, 6.0f));
+
 	for(int k=0; k<fluidnum; k++){
 		hostCarrier.massArr[k] = hostCarrier.mass * massratio[k];
 		hostCarrier.densArr[k] = hostCarrier.restdensity * densratio[k];
@@ -399,8 +413,9 @@ void FluidSystem::SetupSolidCase() {
 
 
 
-cTime start;
 
+//timer for simulation stages
+cTime start;
 void FluidSystem::ClearTimer(){
 	timerStrs.clear();
 	timerVals.clear();
@@ -412,6 +427,10 @@ void FluidSystem::CheckTimer(const char* msg){
 	timerStrs.push_back(msg);
 	start.update();
 }
+
+
+
+
 
 void FluidSystem::Run (int width, int height)
 {
@@ -465,7 +484,7 @@ void FluidSystem::RunSimpleSPH() {
 	MfComputeForceCUDA();
 	CheckTimer("force");
 	//---------------Particle Advance---------------------
-	MfAdvanceCUDA(0, hostCarrier.dt, hostCarrier.simscale);
+	MfAdvanceCUDA();
 	CheckTimer("advance");
 
 	//MpmColorTestCUDA();
@@ -488,15 +507,15 @@ void FluidSystem::RunSolid() {
 	CheckTimer("pressure");
 	
 	//Strain, Stress
-	ComputeSolidTensorCUDA();
+	ComputeSolidTensorX_CUDA();
 	CheckTimer("Strain-Stress");
 
 	//Force
-	ComputeSolidForceCUDA();
+	ComputeSolidForceX_CUDA();
 	CheckTimer("Force");
 
 	//Advance
-	MfAdvanceCUDA(0, hostCarrier.dt, hostCarrier.simscale);
+	MfAdvanceCUDA();
 	CheckTimer("advance");
 
 	TransferFromCUDA(fbuf);
@@ -566,6 +585,7 @@ void ParticleEmitter::EmitImmediate(std::vector<cfloat3>& plist){
 		}
 	}
 }
+
 void FluidSystem::InsertParticles(ParticleEmitter& emitter, std::vector<cfloat3> plist, int cat){
 	for(int i=0; i<plist.size();i++){
 		int p = AddParticle();
@@ -605,7 +625,7 @@ void FluidSystem::AddFluidVolume(cfloat3 min, cfloat3 max, float spacing, cfloat
 		printf("Max pointnum reached.\n");
 
 	cfloat3 pos;
-	int n = 0, p;
+	int n=0,p;
 	int cntx, cnty, cntz;
 	cfloat3 cnts = (max - min) / spacing;
 
@@ -629,11 +649,12 @@ void FluidSystem::AddFluidVolume(cfloat3 min, cfloat3 max, float spacing, cfloat
 					calculationBuffer[p].restdens = hostCarrier.densArr[cat];
 					calculationBuffer[p].mass = hostCarrier.massArr[cat];
 					calculationBuffer[p].visc = hostCarrier.viscArr[cat];
+					n++;
 				}
 			}
 		}
 	}
-	printf("%d fluid has %d particles\n", cat, n);
+	printf("No.%d fluid has %d particles\n", cat, n);
 }
 
 void FluidSystem::AddDeformableVolume(cfloat3 min, cfloat3 max, float spacing, int cat)
@@ -680,9 +701,11 @@ using namespace tinyxml2;
 extern XMLElement* pele;
 
 void FluidSystem::ParseXML(int caseid){
+	
+	printf("Parsing XML.\n");
 	tinyxml2::XMLDocument doc;
 	int result = doc.LoadFile("scene.xml");
-	printf("return by open xml %d\n",result);
+	
 
 	XMLElement* fluidElement = doc.FirstChildElement("Fluid");
 	XMLElement* sceneElement = doc.FirstChildElement("MultiScene");
@@ -778,7 +801,6 @@ void FluidSystem::EmitUpdateCUDA(int startnum, int endnum, bufList& fbuf)
 	CarryParam(hostCarrier);
 	fcuda.pnum = pointNum;
 	computeNumBlocks(fcuda.pnum, 384, fcuda.numBlocks, fcuda.numThreads);
-	updateParam(&fcuda);
 }
 
 
@@ -800,10 +822,6 @@ void FluidSystem::SetupMPMGrid() {
 	hostCarrier.mpmRes = mpmres;
 
 	nodevel = new cfloat3[ hostCarrier.mpmNodeNum ];
-
-	//u = new float[(mpmres.x+1)*mpmres.y*mpmres.z];
-	//v = new float[mpmres.x*(mpmres.y+1)*mpmres.z];
-	//w = new float[mpmres.x*mpmres.y*(mpmres.z+1)];
 
 	MpmAllocateBufferCUDA(hostCarrier);
 	CarryParam(hostCarrier);
