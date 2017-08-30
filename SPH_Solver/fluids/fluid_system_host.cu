@@ -80,7 +80,6 @@ void FluidClearCUDA ()
 {
 	cudaFree(fbuf.displayBuffer);
 	cudaFree(fbuf.calcBuffer);
-	cudaFree(fbuf.intmBuffer);
 
 	cudaFree ( fbuf.msortbuf );	
 	cudaFree(fbuf.MFidTable);
@@ -113,22 +112,30 @@ void FluidSetupCUDA(ParamCarrier& params){
 	//fcuda.szPnts = (fcuda.numBlocks  * fcuda.numThreads);
 	fcuda.szPnts = params.maxNum;
 
-	cudaMalloc(&fbuf.displayBuffer, EMIT_BUF_RATIO * fcuda.szPnts * sizeof(displayPack));
-	cudaMalloc(&fbuf.calcBuffer,	EMIT_BUF_RATIO*fcuda.szPnts*sizeof(calculationPack));
-	cudaMalloc(&fbuf.intmBuffer,	EMIT_BUF_RATIO*fcuda.szPnts*sizeof(IntermediatePack));
+	cudaMalloc(&fbuf.displayBuffer, fcuda.szPnts * sizeof(displayPack));
+	cudaMalloc(&fbuf.calcBuffer,	fcuda.szPnts*sizeof(calculationPack));
+	int temp_size = (sizeof(displayPack) + sizeof(calculationPack));
+	cudaMalloc(&fbuf.msortbuf, fcuda.szPnts*temp_size);
+
+	//without index sort
+	cudaMalloc(&fbuf.densityResidue, fcuda.szPnts * sizeof(float));
+	cudaMalloc(&fbuf.press_l,  fcuda.szPnts*sizeof(float));
+	cudaMalloc(&fbuf.press_l1, fcuda.szPnts*sizeof(float));
+	cudaMalloc(&fbuf.rho_adv, fcuda.szPnts*sizeof(float));
+	cudaMalloc(&fbuf.stress,  fcuda.szPnts*sizeof(cmat3));
+	cudaMalloc(&fbuf.aii, fcuda.szPnts*sizeof(float));
+	cudaMalloc(&fbuf.dii, fcuda.szPnts*sizeof(cfloat3));
+	cudaMalloc(&fbuf.dijpj, fcuda.szPnts*sizeof(cfloat3));
+
+	cudaMalloc(&fbuf.MFidTable,	fcuda.szPnts*sizeof(int));
 	
-	int temp_size = EMIT_BUF_RATIO*(sizeof(displayPack) + sizeof(calculationPack));
-
-
-	cudaMalloc(&fbuf.MFidTable,		EMIT_BUF_RATIO*fcuda.szPnts*sizeof(int)); //id table no sorting
-	cudaMalloc(&fbuf.msortbuf,		EMIT_BUF_RATIO*fcuda.szPnts*temp_size);
 
 	// Allocate grid
 	fcuda.szGrid = (fcuda.gridBlocks * fcuda.gridThreads);
-	CUDA_SAFE_CALL(cudaMalloc((void**)&fbuf.mgcell, EMIT_BUF_RATIO*fcuda.szPnts*sizeof(uint)));
-	CUDA_SAFE_CALL(cudaMalloc((void**)&fbuf.mgndx, EMIT_BUF_RATIO*fcuda.szPnts*sizeof(uint)));
+	CUDA_SAFE_CALL(cudaMalloc((void**)&fbuf.mgcell, fcuda.szPnts*sizeof(uint)));
+	CUDA_SAFE_CALL(cudaMalloc((void**)&fbuf.mgndx,  fcuda.szPnts*sizeof(uint)));
 	CUDA_SAFE_CALL(cudaMalloc((void**)&fbuf.mgridcnt, fcuda.szGrid*sizeof(int)));
-	CUDA_SAFE_CALL(cudaMalloc((void**)&fbuf.midsort, EMIT_BUF_RATIO*fcuda.szPnts*sizeof(uint)));
+	CUDA_SAFE_CALL(cudaMalloc((void**)&fbuf.midsort,  fcuda.szPnts*sizeof(uint)));
 	CUDA_SAFE_CALL(cudaMalloc((void**)&fbuf.mgridoff, fcuda.szGrid*sizeof(int)));
 	
 
@@ -271,8 +278,8 @@ void initSPH(float* restdensity,int* mftype){
 
 void MfComputePressureCUDA ()
 {
-	ComputeBoundaryVolume <<< fcuda.numBlocks, fcuda.numThreads>>> (fbuf, fcuda.pnum);
-	cudaDeviceSynchronize();
+	//ComputeBoundaryVolume <<< fcuda.numBlocks, fcuda.numThreads>>> (fbuf, fcuda.pnum);
+	//cudaDeviceSynchronize();
 
 	ComputeDensityPressure <<< fcuda.numBlocks, fcuda.numThreads >>> (fbuf, fcuda.pnum);
 	cudaDeviceSynchronize();
@@ -431,4 +438,48 @@ void InitializeSolid_CUDA(){
 	//calculate invA
 	ComputeInvA <<<fcuda.numBlocks, fcuda.numThreads>>>(fbuf, fcuda.pnum);
 	cudaThreadSynchronize();
+}
+
+
+//IISPH
+void ComputeBoundaryDensity() {
+	ComputeBoundaryVolume <<< fcuda.numBlocks, fcuda.numThreads>>> (fbuf, fcuda.pnum);
+	cudaDeviceSynchronize();
+}
+
+void PredictAdvection() {
+	ComputeDii <<<fcuda.numBlocks, fcuda.numThreads>>> (fbuf, fcuda.pnum);
+	cudaDeviceSynchronize();
+
+	ComputeAii <<<fcuda.numBlocks, fcuda.numThreads>>> (fbuf, fcuda.pnum);
+	cudaDeviceSynchronize();
+}
+
+void PressureSolve() {
+	int iter = 0;
+	float rho_avg = 0;
+
+	while (true) {
+		Pressure_DP<<<fcuda.numBlocks, fcuda.numThreads>>>(fbuf, fcuda.pnum);
+		cudaDeviceSynchronize();
+
+		Pressure_Iter<<<fcuda.numBlocks, fcuda.numThreads>>>(fbuf, fcuda.pnum);
+		cudaDeviceSynchronize();
+
+		cudaMemcpy(fbuf.press_l,fbuf.press_l1,sizeof(float)*fcuda.pnum,cudaMemcpyDeviceToDevice);
+
+		//criterion
+		thrust::device_ptr<float> d_ptr = thrust::device_pointer_cast(fbuf.densityResidue);
+		float sum = thrust::reduce(d_ptr, d_ptr+fcuda.pnum);
+		sum /= fcuda.pnum;
+		printf("%d iteration: residue %f\n",iter,sum);
+		//break;
+	}
+
+
+}
+
+void Integration() {
+	IntegrateIISPH<<<fcuda.numBlocks, fcuda.numThreads>>>(fbuf,fcuda.pnum);
+	cudaDeviceSynchronize();
 }

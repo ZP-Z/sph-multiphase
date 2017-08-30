@@ -555,7 +555,8 @@ __global__ void ComputeSolidTensor(bufList buf, int pnum) {
 	//get Cauchy stress sigma
 	for(int k=0; k<9; k++)
 		tmp3.data[k] *= paramCarrier.solidK;
-	buf.intmBuffer[i].stress = tmp3;
+	//buf.intmBuffer[i].stress = tmp3;
+	buf.stress[i] = tmp3;
 
 }
 
@@ -593,7 +594,7 @@ __device__ void ContributeSolidForce(cfloat3& result, int i, bufList buf, int ce
 				cmterm = paramCarrier.kspikydiff * c * c / dsq * buf.calcBuffer[j].mass * jdens * idens;
 
 				for(int k=0; k<9; k++)
-					stressij.data[k] = (buf.intmBuffer[i].stress.data[k] + buf.intmBuffer[j].stress.data[k]);
+					stressij.data[k] = (buf.stress[i].data[k] + buf.stress[j].data[k]);
 
 				cfloat3 tmp;
 				mvprod(stressij, dist, tmp);

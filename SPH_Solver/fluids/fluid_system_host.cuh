@@ -49,10 +49,8 @@
 
 	void FluidClearCUDA ();
 
-
 	void FluidSetupCUDA(ParamCarrier& params);
-	void FluidParamCUDA(ParamCarrier& param);
-
+	
 	//new sort
 	void GetParticleIndexCUDA();
 	void GetGridListCUDA();
@@ -66,6 +64,12 @@
 	void MfComputeCorrectionCUDA();  
 	void MfComputeForceCUDA ();	
 	void MfAdvanceCUDA ();
+
+	void ComputeBoundaryDensity();
+	//IISPH
+	void PredictAdvection();
+	void PressureSolve();
+	void Integration();
 
 	//Project-U changes computing force
 	void ComputeForceCUDA_ProjectU();

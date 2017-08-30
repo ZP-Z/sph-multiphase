@@ -230,56 +230,6 @@ void FluidSystem::outputFile()
 //}
 
 
-#include <png.h>
-
-void FluidSystem::CaptureVideo (int width, int height)
-{
-
-	
-	char fileName[64];   
-    sprintf( fileName, "snapshot/snapshot_%04d.png", frameNo );
- 									// record frame buffer directly to image pixels
-    uchar * pixels = new uchar[width*height*3];
-    glReadPixels( 0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)pixels );	
-
-    png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-    if (!png)
-        return;
-
-    png_infop info = png_create_info_struct(png);
-    if (!info){
-        png_destroy_write_struct(&png, &info);
-        return;
-    }
-
-    FILE* fp = fopen(fileName, "wb");
-    png_init_io(png, fp);
-    png_set_IHDR(png, info, width, height, 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
-    png_colorp palette = (png_colorp)png_malloc(png, PNG_MAX_PALETTE_LENGTH * sizeof(png_color));
-    if (!palette){
-        fclose(fp);
-        png_destroy_write_struct(&png, &info);
-        return;
-    }
-    png_set_PLTE(png, info, palette, PNG_MAX_PALETTE_LENGTH);
-    png_write_info(png, info);
-    png_set_packing(png);
-
-    png_bytepp rows = (png_bytepp)png_malloc(png, height*sizeof(png_bytep));
-    for (int i=0; i<height; i++)
-        rows[i] = (png_bytep)(pixels + (height-i-1)*width*3);
-    png_write_image(png,rows);
-    png_write_end(png,info);
-    png_free(png,palette);
-	png_free(png,rows);
-    png_destroy_write_struct(&png, &info);
-
-    fclose(fp);
-    
-	delete pixels;
-
-    return;
-}
 
 void FluidSystem::saveParticle(std::string name)
 {

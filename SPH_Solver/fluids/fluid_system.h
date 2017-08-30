@@ -43,9 +43,7 @@ public:
 	void ParseXML(int caseid);
 	void SetupSpacing ();
 	void SetupGrid ();
-	void BeforeFirstRun();
 	void SetupDevice();
-	
 	
 
 	void SetupSimpleSphCase();
@@ -69,7 +67,6 @@ public:
 	void AddFluidVolume( cfloat3 min, cfloat3 max, float spacing, cfloat3 offs, int cat);// cat: category label
 	//void SetupMfAddDeformVolume( cfloat3 min, cfloat3 max, float spacing, cfloat3 offs, int type);
 	void AddDeformableVolume( cfloat3 min, cfloat3 max, float spacing, int cat);
-	void SetupAddBubble( cfloat3 min, cfloat3 max, float spacing, int constitution);
 
 	//Code Generate Boundaries
     void LoadBoundary(std::string boundfile);
@@ -93,16 +90,16 @@ public:
 	void TransferFromCUDA(bufList& fbuf);
 
 	// Simulation
-	void Run (int w, int h);
+	void BeforeFirstStep();
+	void Run();
 	//void RunSimulateMultiCUDAFull();
     //void RunMpmSolution();
 	void RunSimpleSPH();
 	void RunSolid();
+	void RunIISPH();
 
 	void LiquidToBubble();
 
-	void CaptureVideo (int width, int height);
-	void record ( int param, std::string, cTime& start );
 	void outputFile();
 	
 	void ClearTimer();
@@ -115,7 +112,6 @@ public:
 	//particle buffer
 	displayPack* displayBuffer;
 	calculationPack* calculationBuffer;
-	IntermediatePack* intmBuffer;
 
 	float boundarySpacing;
 	float boundarySpacingFactor;
@@ -158,5 +154,4 @@ public:
 	void SetupMPMGrid();
 	void ReleaseMPMGrid();
 	void CopyMPMFromDevice();
-	void IndexSortMpmNode();
 };

@@ -27,26 +27,45 @@ FluidSystem::FluidSystem ()
 
 #define RUN_SPH 1
 #define RUN_SOLID 2
+#define RUN_IISPH 3
+
+#define SPH_CASE 1
+#define SOLID_CASE 2
 
 void FluidSystem::Setup ()
 {
 	
 	ResetParameters();
 	
-	runMode = RUN_SPH;
+	runMode = RUN_IISPH;
 	glutSetWindowTitle("Fluid SPH");
 
-    //SetupMpmCase();
-	SetupSimpleSphCase();
-	//SetupSolidCase();
+	int setupCase = SPH_CASE;
+	switch (setupCase) {
+	case SPH_CASE:
+		SetupSimpleSphCase();
+		break;
+	case SOLID_CASE:
+		SetupSolidCase();
+		break;
+	}
 
-	SetupGrid ();	// Setup grid
-
+	SetupGrid();
 	SetupDevice();
 	
+	BeforeFirstStep();
 	//SetupMPMGrid();
-	
 	//InitializeSolid_CUDA();
+}
+
+void FluidSystem::BeforeFirstStep() {
+	
+	GetParticleIndexCUDA();
+	GetGridListCUDA();
+	RearrageDataCUDA();
+
+	printf("Initialize Boundary Density Number.\n");
+	ComputeBoundaryDensity();
 }
 
 void FluidSystem::Exit ()
@@ -432,30 +451,25 @@ void FluidSystem::CheckTimer(const char* msg){
 
 
 
-void FluidSystem::Run (int width, int height)
+void FluidSystem::Run()
 {
 	
 	
 
 	switch( runMode){
-	case 0:	
-		//RunMpmSolution();
-		break;
-	case 1:
+	case RUN_SPH:
 		RunSimpleSPH();
 		break;
-	case 2:
+	case RUN_SOLID:
 		RunSolid();
 		break;
-	}
-
-	if ( bSnapshot && frameNo % 20 ==0){
-		CaptureVideo ( width, height );
+	case RUN_IISPH:
+		RunIISPH();
+		break;
 	}
 
 	//if (frameNo==20) {
 	//EmitParticles(2);
-		
 	//}
 
 	//if ( frameNo % framespacing ==0 ){
@@ -489,6 +503,29 @@ void FluidSystem::RunSimpleSPH() {
 
 	//MpmColorTestCUDA();
 	//MpmGetMomentumCUDA();
+
+	TransferFromCUDA(fbuf);
+}
+
+void FluidSystem::RunIISPH() {
+	ClearTimer();
+
+	GetParticleIndexCUDA();
+	GetGridListCUDA();
+	RearrageDataCUDA();
+	CheckTimer("sorting");
+
+	MfComputePressureCUDA();
+	CheckTimer("density&pressure(EOS)");
+
+	PredictAdvection();
+	CheckTimer("IISPH Predict Advection");
+
+	PressureSolve();
+	CheckTimer("IISPH Pressure Solve");
+	
+	//Integration();
+	//CheckTimer("IISPH Integration");
 
 	TransferFromCUDA(fbuf);
 }
@@ -734,9 +771,6 @@ void FluidSystem::ParseXML(int caseid){
 
 	//some general parameter
 	pele = fluidElement;
-	hostCarrier.intstiff = XMLGetFloat("IntStiff");
-	hostCarrier.extstiff = XMLGetFloat("ExtStiff");
-	hostCarrier.extdamp = XMLGetFloat("ExtDamp");
 	hostCarrier.acclimit = XMLGetFloat("AccelLimit");
 	hostCarrier.vlimit = XMLGetFloat("VelLimit");
 	hostCarrier.gravity = XMLGetFloat3("Gravity");
@@ -764,9 +798,6 @@ void FluidSystem::ParseXML(int caseid){
 	hostCarrier.mass = XMLGetFloat("Mass");
 	hostCarrier.restdensity = XMLGetFloat("RestDensity");
 	hostCarrier.radius = XMLGetFloat("Radius");
-	hostCarrier.extstiff = XMLGetFloat("ExtStiff");
-	hostCarrier.intstiff = XMLGetFloat("IntStiff");
-	hostCarrier.extdamp = XMLGetFloat("ExtDamp");
 	hostCarrier.softminx = XMLGetFloat3("SoftBoundMin");
 	hostCarrier.softmaxx = XMLGetFloat3("SoftBoundMax");
 	hostCarrier.solidK = XMLGetFloat("SolidK");
@@ -782,13 +813,11 @@ void FluidSystem::ParseXML(int caseid){
 void FluidSystem::TransferToCUDA(bufList& fbuf) {
 	cudaMemcpy(fbuf.displayBuffer,displayBuffer,sizeof(displayPack)*pointNum, cudaMemcpyHostToDevice);
 	cudaMemcpy(fbuf.calcBuffer, calculationBuffer, sizeof(calculationPack)*pointNum, cudaMemcpyHostToDevice);
-	//cudaMemcpy(fbuf.intmBuffer, intmBuffer, sizeof(IntermediatePack)*pointNum, cudaMemcpyHostToDevice);
 }
 
 void FluidSystem::TransferFromCUDA(bufList& fbuf) {
 	cudaMemcpy( displayBuffer, fbuf.displayBuffer, sizeof(displayPack)*pointNum, cudaMemcpyDeviceToHost);
 	//cudaMemcpy( calculationBuffer, fbuf.calcBuffer, sizeof(calculationPack)*pointNum, cudaMemcpyDeviceToHost);
-	//cudaMemcpy(intmBuffer, fbuf.intmBuffer, sizeof(IntermediatePack)*pointNum, cudaMemcpyDeviceToHost);
 }
 
 

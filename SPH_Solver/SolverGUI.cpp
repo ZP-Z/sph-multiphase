@@ -258,12 +258,6 @@ GLuint envid;
 //	}
 //}
 
-int frame;
-
-
-
-
-
 
 
 void display()
@@ -406,8 +400,8 @@ void SolverGUI::keyDown(unsigned char key){
 	case 27:			    exit(0); break;
 
 	case '`':				
-		psys->bSnapshot = ! psys->bSnapshot;
-		if(psys->bSnapshot)
+		bSnapshot = !bSnapshot;
+		if(bSnapshot)
 			printf("taking snapshot\n");
 		else
 			printf("stop taking snapshot\n");
@@ -927,14 +921,7 @@ void SolverGUI::DrawBox() {
 //}
 
 
-
-void SolverGUI::Initialize(int argc, char** argv) {
-	// Initialize CUDA
-	cudaInit(argc, argv);
-
-
-
-
+void SolverGUI::InitializeGL(int argc, char** argv) {
 	// set up the window
 	glutInit(&argc, &argv[0]);
 
@@ -946,7 +933,7 @@ void SolverGUI::Initialize(int argc, char** argv) {
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH |GLUT_MULTISAMPLE);
 	glutInitWindowSize((int)window_width, (int)window_height);
 	glutCreateWindow("Multiphase Nekobus");
-	
+
 
 
 
@@ -996,14 +983,14 @@ void SolverGUI::Initialize(int argc, char** argv) {
 		AllocateCubeVBO();
 		break;
 	}
-	
+
 	CreateBoxShaders();
 	AllocateBoxVBO();
-	
+
 
 	//Texture
 
-	if(rendermode==PARTICLE_RENDERER){
+	if (rendermode==PARTICLE_RENDERER) {
 		int width, height;
 		unsigned char* image = SOIL_load_image("drop.png", &width, &height, 0, SOIL_LOAD_RGBA);
 		glGenTextures(1, textures);
@@ -1014,7 +1001,15 @@ void SolverGUI::Initialize(int argc, char** argv) {
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	}
+}
 
+void SolverGUI::Initialize(int argc, char** argv) {
+	// Initialize CUDA
+	cudaInit(argc, argv);
+	InitializeGL(argc,argv);
+
+	frameNo = 0;
+	bSnapshot = false;
 }
 
 
@@ -1060,16 +1055,15 @@ void SolverGUI::GetBoundingBox() {
 void SolverGUI::render() {
 
 	if (!bPause) {
-		psys->Run(window_width, window_height);
+		psys->Run();
 
 		//stokesian->step();
-		frame++;
+		
+		if(bSnapshot  && frameNo % 20 ==0)
+			TakeSnapshot();
+		frameNo++;
 		//measureFPS();
 	}
-
-	glEnable(GL_DEPTH_TEST);
-	glClearColor(0.4, 0.4, 0.4, 1);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	//draw2D();
 	
@@ -1077,12 +1071,16 @@ void SolverGUI::render() {
 	if (LastTime == 0)
 		LastTime = Now;
 
-
 	//Update Camera Position
 	camera.velMax = 100;
 	camera.AdvanceCamera((float)(Now-LastTime)/1000.f);
 	ViewMatrix = camera.viewmat;
 	LastTime = Now;
+
+
+	glEnable(GL_DEPTH_TEST);
+	glClearColor(0.4, 0.4, 0.4, 1);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	switch (rendermode) {
 	case PARTICLE_RENDERER:
@@ -1114,4 +1112,57 @@ void SolverGUI::Exit(){
 	delete psys;
 
 	//delete stokesian;
+}
+
+#include <png.h>
+
+void SolverGUI::TakeSnapshot()
+{
+
+	int width = window_width;
+	int height = window_height;
+
+	char fileName[64];
+	sprintf(fileName, "snapshot/snapshot_%04d.png", frameNo);
+	// record frame buffer directly to image pixels
+	uchar * pixels = new uchar[width*height*3];
+	glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)pixels);
+
+	png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+	if (!png)
+		return;
+
+	png_infop info = png_create_info_struct(png);
+	if (!info) {
+		png_destroy_write_struct(&png, &info);
+		return;
+	}
+
+	FILE* fp = fopen(fileName, "wb");
+	png_init_io(png, fp);
+	png_set_IHDR(png, info, width, height, 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+	png_colorp palette = (png_colorp)png_malloc(png, PNG_MAX_PALETTE_LENGTH * sizeof(png_color));
+	if (!palette) {
+		fclose(fp);
+		png_destroy_write_struct(&png, &info);
+		return;
+	}
+	png_set_PLTE(png, info, palette, PNG_MAX_PALETTE_LENGTH);
+	png_write_info(png, info);
+	png_set_packing(png);
+
+	png_bytepp rows = (png_bytepp)png_malloc(png, height*sizeof(png_bytep));
+	for (int i=0; i<height; i++)
+		rows[i] = (png_bytep)(pixels + (height-i-1)*width*3);
+	png_write_image(png, rows);
+	png_write_end(png, info);
+	png_free(png, palette);
+	png_free(png, rows);
+	png_destroy_write_struct(&png, &info);
+
+	fclose(fp);
+
+	delete pixels;
+
+	return;
 }

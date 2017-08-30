@@ -95,13 +95,11 @@ public:
 	void render();
 
 
-
 	void Initialize(int argc,char** argv);
-	
-	//void CreateCube(void);
+	void InitializeGL(int argc,char** argv);
 
 	void ReleaseGLBuffers(void);
-	//void DrawCube(void);
+	
 	void ReSize(int width,int height);
 
 	void CreateShaders();
@@ -117,6 +115,7 @@ public:
 	void AllocateBoxVBO();
 	void CreateBoxShaders();
 	void DrawBox();
+	void TakeSnapshot();
 
 	//rendering particles
 	GLuint ProjectionMatrixUniformLocation,
@@ -167,4 +166,6 @@ public:
 	int pointNum;
 
 	int rendermode;
+	int frameNo;
+	bool bSnapshot;
 };

@@ -15,6 +15,7 @@
 #endif
 
 #define MAX_FLUIDNUM 3
+#define FLUID_NUM 3
 
 #define TYPE_FLUID 0
 #define TYPE_BOUNDARY 1
@@ -23,17 +24,9 @@
 typedef unsigned int			uint;
 typedef unsigned short int		ushort;
 
-
-
-
-
-
 struct ParamCarrier {
 
 	//environment
-	float intstiff;
-	float extstiff;
-	float extdamp;
 	float acclimit;
 	float vlimit;
 	cfloat3 gravity;
@@ -55,9 +48,9 @@ struct ParamCarrier {
 	float radius;
 	float smoothradius;
 	float scalep;
-	float massArr[3];
-	float densArr[3];
-	float viscArr[3];
+	float massArr[FLUID_NUM];
+	float densArr[FLUID_NUM];
+	float viscArr[FLUID_NUM];
 
 	//sph kernel
 	float kpoly6;
@@ -71,7 +64,7 @@ struct ParamCarrier {
 	float bvisc;
 
 
-	//sorting grid parameter
+	//index sort grid
 	float cellsize;
 	int searchnum;
 	int neighbornum;
@@ -130,6 +123,7 @@ struct calculationPack {
 	
 	cfloat3 X; //reference position
 	cmat3 invA;
+	
 };
 
 //remain unsorted

@@ -15,9 +15,9 @@
 	<DT>			0.0005 </DT>
 	<Radius> 0.01 </Radius>
 	<SmoothRadius> 0.015 </SmoothRadius>
-	<Viscosity>	 1.0		</Viscosity>
-	<Mass> 0.00010543 </Mass>
-	<RestDensity> 600 </RestDensity>
+	<Viscosity>	 0.5		</Viscosity>
+	<Mass> 0.00020543 </Mass>
+	<RestDensity> 1000 </RestDensity>
 	<IntStiff>		0.03	 </IntStiff>
 	<ExtStiff>	50000.0	</ExtStiff>
 	<ExtDamp>	0.0		</ExtDamp>
@@ -30,7 +30,7 @@
 	<SoftBoundMax>	 40, 100, 40 </SoftBoundMax>
 	
     <VolMin0>		 -10,   5, -10	</VolMin0>
-	<VolMax0>		  10,  25,  10	</VolMax0>
+	<VolMax0>		  10,  45,  10	</VolMax0>
 	
 	<FSA>  1 </FSA> 
 	<BoundViscFactor> -1 </BoundViscFactor>
@@ -65,7 +65,7 @@
 </MultiScene>
 
 <BoundInfo id="1">
-	<Viscosity>	10.0		</Viscosity>
+	<Viscosity>	100.0		</Viscosity>
 	<RestDensity>	600.0		</RestDensity>
 	<Mass>		0.00010543	</Mass>
 	<BoundStiff>	5000	</BoundStiff>
