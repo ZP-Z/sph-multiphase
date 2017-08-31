@@ -716,8 +716,8 @@ __device__ void contributeDii(int i, cfloat3& dii, int cell, bufList buf) {
 		
 		c = h - dist;
 		nW_fac = paramCarrier.kspikydiff * c * c / dist;
-		nablaWij = xij * (-1) * nW_fac;
-		dii = dii - xij*nW_fac*buf.calcBuffer[j].mass;
+		nablaWij = xij * nW_fac;
+		dii = dii - nablaWij*buf.calcBuffer[j].mass;
 	}
 }
 
@@ -970,9 +970,12 @@ __global__ void Pressure_Iter(bufList buf, int pnum) {
 	//}
 
 	//update pressure
-	float omega = 0.5;
+	float omega = 0.3;
 	buf.press_l1[i] = (1-omega)*buf.press_l[i] + omega/buf.aii[i]
 		*(buf.calcBuffer[i].restdens - buf.rho_adv[i] - updateterm); //<-- residue
+	float rhoil = buf.rho_adv[i]+updateterm+buf.aii[i]*buf.press_l[i];
+	if(i%100==0)
+		printf("%f\n",rhoil);
 	buf.densityResidue[i] = -buf.calcBuffer[i].restdens+(buf.rho_adv[i]+updateterm+buf.aii[i]*buf.press_l[i]);
 	
 }

@@ -472,7 +472,7 @@ void PressureSolve() {
 		thrust::device_ptr<float> d_ptr = thrust::device_pointer_cast(fbuf.densityResidue);
 		float sum = thrust::reduce(d_ptr, d_ptr+fcuda.pnum);
 		sum /= fcuda.pnum;
-		printf("%d iteration: residue %f\n",iter,sum);
+		printf("%d iteration: residue %f\n",iter++,sum);
 		//break;
 	}
 
