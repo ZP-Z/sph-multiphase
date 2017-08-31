@@ -515,8 +515,8 @@ void FluidSystem::RunIISPH() {
 	RearrageDataCUDA();
 	CheckTimer("sorting");
 
-	MfComputePressureCUDA();
-	CheckTimer("density&pressure(EOS)");
+	ComputeDensityIISPH_CUDA();
+	CheckTimer("density");
 
 	PredictAdvection();
 	CheckTimer("IISPH Predict Advection");
@@ -524,8 +524,8 @@ void FluidSystem::RunIISPH() {
 	PressureSolve();
 	CheckTimer("IISPH Pressure Solve");
 	
-	//Integration();
-	//CheckTimer("IISPH Integration");
+	Integration();
+	CheckTimer("IISPH Integration");
 
 	TransferFromCUDA(fbuf);
 }
@@ -651,6 +651,7 @@ int FluidSystem::AddParticle()
 	calculationBuffer[n].veleval.Set(0, 0, 0);
 	calculationBuffer[n].bornid = n;
 	calculationBuffer[n].deformGrad.Set(unitMatrix);
+	calculationBuffer[n].pressure = 0;
 
 	pointNum++;
 	return n;

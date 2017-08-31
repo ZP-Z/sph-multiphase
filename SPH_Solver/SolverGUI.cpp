@@ -1059,7 +1059,7 @@ void SolverGUI::render() {
 
 		//stokesian->step();
 		
-		if(bSnapshot  && frameNo % 20 ==0)
+		if(bSnapshot  && frameNo % 5 ==0)
 			TakeSnapshot();
 		frameNo++;
 		//measureFPS();

@@ -132,6 +132,6 @@ __global__ void Pressure_DP(bufList buf, int pnum);
 __global__ void Pressure_Iter(bufList buf,int pnum);
 
 __global__ void IntegrateIISPH(bufList buf,int pnum);
-
+__global__ void ComputeDensityIISPH(bufList buf,int pnum);
 
 

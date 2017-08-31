@@ -12,7 +12,7 @@
 	<Num> 100000 </Num>
 	<SimScale>		0.005		</SimScale>
 	<Name>		Test 	</Name>
-	<DT>			0.0001 </DT>
+	<DT>			0.0002 </DT>
 	<Radius> 0.01 </Radius>
 	<SmoothRadius> 0.015 </SmoothRadius>
 	<Viscosity>	 0.5		</Viscosity>

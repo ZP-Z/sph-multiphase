@@ -290,6 +290,11 @@ void MfComputePressureCUDA ()
 	}
 }
 
+void ComputeDensityIISPH_CUDA() {
+	ComputeDensityIISPH <<< fcuda.numBlocks, fcuda.numThreads >>> (fbuf, fcuda.pnum);
+	cudaDeviceSynchronize();
+}
+
 //void MfComputeDriftVelCUDA ()
 //{
 //    //mfComputeDriftVel<<< fcuda.numBlocks, fcuda.numThreads>>> ( fbuf, fcuda.pnum );
@@ -448,9 +453,11 @@ void ComputeBoundaryDensity() {
 }
 
 void PredictAdvection() {
+	//v_adv, dii
 	ComputeDii <<<fcuda.numBlocks, fcuda.numThreads>>> (fbuf, fcuda.pnum);
 	cudaDeviceSynchronize();
 
+	//rho_adv_i, aii
 	ComputeAii <<<fcuda.numBlocks, fcuda.numThreads>>> (fbuf, fcuda.pnum);
 	cudaDeviceSynchronize();
 }
@@ -472,8 +479,13 @@ void PressureSolve() {
 		thrust::device_ptr<float> d_ptr = thrust::device_pointer_cast(fbuf.densityResidue);
 		float sum = thrust::reduce(d_ptr, d_ptr+fcuda.pnum);
 		sum /= fcuda.pnum;
-		printf("%d iteration: residue %f\n",iter++,sum);
+		printf("%d iteration: residue %f\n",iter,sum);
 		//break;
+
+		if (sum<0.1 && iter>=2) {
+			break;
+		}
+		iter++;
 	}
 
 

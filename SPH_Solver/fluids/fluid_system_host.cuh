@@ -66,7 +66,9 @@
 	void MfAdvanceCUDA ();
 
 	void ComputeBoundaryDensity();
+	
 	//IISPH
+	void ComputeDensityIISPH_CUDA();
 	void PredictAdvection();
 	void PressureSolve();
 	void Integration();
