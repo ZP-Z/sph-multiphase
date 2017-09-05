@@ -631,6 +631,45 @@ __global__ void SurfaceTension(bufList buf, int pnum){
 
 --------------------------*/
 
+
+//begin iisph
+//r = x_i - x_j
+__device__ float kern(cfloat3 r) {
+	float q = sqrt(dot(r,r))/paramCarrier.smoothradius;
+	if(q>2)
+		return 0;
+	else if(q>1)
+		return 0.25f*pow(2-q,3.0f)*paramCarrier.kspline;
+	else
+		return (1 - 1.5f*q*q + 0.75f*pow(q,3.0f))*paramCarrier.kspline;
+}
+
+__device__ cfloat3 nablakern(cfloat3 r) {
+	float rmod = sqrt(dot(r,r));
+	float q = rmod/paramCarrier.smoothradius;
+	float fac = 0;
+	if(q>2)
+		return cfloat3(0,0,0);
+	else if (q>1) {
+		fac  = 0.75f * (2-q)*(2-q) *(-1) /paramCarrier.smoothradius/rmod * paramCarrier.kspline;
+		return r*fac;
+	}
+	else {
+		fac = (-3*q + 2.25f*q*q)/paramCarrier.smoothradius/rmod * paramCarrier.kspline;
+		//fac = (1-q)*(1-q)/paramCarrier.smoothradius/rmod * paramCarrier.kspline;
+
+		//float c = paramCarrier.smoothradius - rmod;
+		
+		//fac = paramCarrier.kspline * c*c / rmod;
+		
+		return r*fac;
+	}
+	
+	/*float c = paramCarrier.smoothradius - rmod;
+	float nW_fac = paramCarrier.kspikydiff * c * c / rmod * 10;
+	return r*nW_fac;*/
+}
+
 __device__ void contributeAcc_adv(int i, cfloat3& acc_adv, int cell, bufList buf) {
 	
 	if (buf.mgridcnt[cell] == 0)
@@ -649,10 +688,9 @@ __device__ void contributeAcc_adv(int i, cfloat3& acc_adv, int cell, bufList buf
 	cfloat3 ivel = buf.calcBuffer[i].vel;
 	float ivisc = buf.calcBuffer[i].visc;
 	float idens = buf.calcBuffer[i].dens;
-	float cmterm;
-	float nW_fac;
-	float vmterm;
+	
 	cfloat3 accel = cfloat3(0, 0, 0);
+	cfloat3 nablawij;
 
 	for (int j = cfirst; j < clast; j++) {
 
@@ -660,18 +698,16 @@ __device__ void contributeAcc_adv(int i, cfloat3& acc_adv, int cell, bufList buf
 		xij *= paramCarrier.simscale;
 		dist = sqrt(dot(xij,xij));
 
-		if (!(dist < h && dist > 0))
+		if (!(dist < 2*h && dist > 0))
 			continue;
-		c = h - dist;
-
-		nW_fac = paramCarrier.kspikydiff * c * c / dist;
-		cmterm = nW_fac * buf.calcBuffer[j].mass * buf.calcBuffer[j].dens;
+		nablawij = nablakern(xij);
+		//cmterm = nW_fac * buf.calcBuffer[j].mass * buf.calcBuffer[j].dens;
 
 		if (buf.displayBuffer[j].type == 0)
 		{
-			vij = ivel - buf.calcBuffer[j].vel;
-			vmterm = cmterm * (ivisc+buf.calcBuffer[j].visc) * idens;
-			accel += vij*vmterm;
+			//vij = ivel - buf.calcBuffer[j].vel;
+			//vmterm = cmterm * (ivisc+buf.calcBuffer[j].visc) * idens;
+			//accel += vij*vmterm;
 		}
 		else if (buf.displayBuffer[j].type == 1) {
 
@@ -681,8 +717,8 @@ __device__ void contributeAcc_adv(int i, cfloat3& acc_adv, int cell, bufList buf
 			if (pi_ij < 0) {
 				pi_ij = pi_ij / (dist*dist + h2 * 0.01);
 				pi_ij = pi_ij * paramCarrier.bvisc * paramCarrier.smoothradius  /2 / buf.calcBuffer[i].restdens;
-				pi_ij = nW_fac * buf.calcBuffer[i].restdens * buf.calcBuffer[j].dens * pi_ij;
-				accel += (xij * pi_ij);
+				pi_ij = buf.calcBuffer[i].restdens * buf.calcBuffer[j].dens * pi_ij;
+				accel += nablawij * pi_ij;
 			}
 		}
 
@@ -703,7 +739,7 @@ __device__ void contributeDii(int i, cfloat3& dii, int cell, bufList buf) {
 	float h = paramCarrier.smoothradius;
 	float c;
 	float nW_fac;
-	cfloat3 nablaWij;
+	cfloat3 nablaWij,nw2;
 
 	for (int j = cfirst; j < clast; j++) {
 		
@@ -711,17 +747,21 @@ __device__ void contributeDii(int i, cfloat3& dii, int cell, bufList buf) {
 		xij = ipos - jpos;
 		xij = xij*paramCarrier.simscale;
 		dist = sqrt(dot(xij,xij));
-		if(!(dist<h && dist>0))
+		if(!(dist< h && dist>0))
 			continue;
 		
-		c = h - dist;
-		nW_fac = paramCarrier.kspikydiff * c * c / dist;
-		nablaWij = xij * nW_fac;
+		//c = h - dist;
+		//nW_fac = paramCarrier.kspikydiff * c * c / dist;
+		//nablaWij = xij * nW_fac;
 		
+		nablaWij = nablakern(xij);
+		//if(buf.calcBuffer[i].bornid==0)
+		//	printf("%f %f %f %f\n",dist/h, nw2.x,nw2.y,nw2.z);
+
 		if (buf.displayBuffer[j].type!=TYPE_BOUNDARY)
 			dii = dii - nablaWij*buf.calcBuffer[j].mass;
-		else
-			dii = dii - nablaWij*buf.calcBuffer[i].restdens*buf.calcBuffer[j].dens;
+		//else
+		//	dii = dii - nablaWij*buf.calcBuffer[i].restdens*buf.calcBuffer[j].dens;
 	}
 }
 
@@ -751,10 +791,8 @@ __global__ void ComputeDii(bufList buf, int pnum) {
 		contributeDii(i,dii,gc+paramCarrier.neighborid[c],buf);
 	}
 	
-	dii = dii * buf.calcBuffer[i].dens * buf.calcBuffer[i].dens * paramCarrier.dt * paramCarrier.dt;
-	//if (i%100==0)
-	//	printf("dii: %.20f %.20f %.20f\n", dii.x, dii.y, dii.z);
-
+	dii = dii / buf.calcBuffer[i].dens / buf.calcBuffer[i].dens * paramCarrier.dt * paramCarrier.dt;
+	
 	buf.dii[i] = dii;
 	
 }
@@ -787,12 +825,13 @@ __device__ void contributeDensChange(int i, float& denschange, int cell, bufList
 		vij = ivel - buf.calcBuffer[j].veleval;
 		c = h - dist;
 		nW_fac = paramCarrier.kspikydiff * c * c / dist; //nabla W
-		nablaWij = xij*nW_fac;
+		//nablaWij = xij*nW_fac;
+		nablaWij = nablakern(xij);
 
 		if(buf.displayBuffer[j].type!=TYPE_BOUNDARY)
 			sum += dot(vij, nablaWij) * buf.calcBuffer[j].mass * paramCarrier.dt;
-		else
-			sum += dot(vij, nablaWij) * buf.calcBuffer[j].dens * buf.calcBuffer[i].restdens * paramCarrier.dt;
+		//else
+			//sum += dot(vij, nablaWij) * buf.calcBuffer[j].dens * buf.calcBuffer[i].restdens * paramCarrier.dt;
 	}
 	denschange += sum;
 }
@@ -829,10 +868,11 @@ __device__ void contributeAii(int i, float& aii, int cell, bufList buf) {
 			continue;
 		c = h - dist;
 		nW_fac = paramCarrier.kspikydiff * c * c / dist; //nabla W
-		nablaWij = xij*nW_fac;
+		//nablaWij = xij*nW_fac;
+		nablaWij = nablakern(xij);
 
-		dji = nablaWij * buf.calcBuffer[i].mass* buf.calcBuffer[i].dens * buf.calcBuffer[i].dens * paramCarrier.dt
-			* paramCarrier.dt;
+		dji = nablaWij * buf.calcBuffer[i].mass / buf.calcBuffer[i].dens / buf.calcBuffer[i].dens 
+			* paramCarrier.dt * paramCarrier.dt;
 		dtmp = dii - dji;
 		sum += dot(dtmp, nablaWij) * buf.calcBuffer[j].mass;
 	}
@@ -853,7 +893,7 @@ __global__ void ComputeAii(bufList buf, int pnum) {
 	for (int c=0; c<paramCarrier.neighbornum; c++) {
 		contributeDensChange(i, denschange, gc+paramCarrier.neighborid[c],buf);
 	}
-	buf.rho_adv[i] = 1/buf.calcBuffer[i].dens + denschange;
+	buf.rho_adv[i] = buf.calcBuffer[i].dens + denschange;
 
 	//p_i_l0
 	buf.press_l[i] = 0.5 * buf.calcBuffer[i].pressure;
@@ -892,10 +932,11 @@ __device__ void contributeDP(int i, cfloat3& dp, int cell, bufList buf) {
 			continue;
 		c = h - dist;
 		nW_fac = paramCarrier.kspikydiff * c * c / dist; //nabla W
-		nablaWij = xij*nW_fac;
+		//nablaWij = xij*nW_fac;
+		nablaWij = nablakern(xij);
 		
-		dp = dp + nablaWij * buf.press_l[j] * buf.calcBuffer[j].mass * buf.calcBuffer[j].dens
-			* buf.calcBuffer[j].dens * (-1);
+		dp = dp + nablaWij * buf.press_l[j] * buf.calcBuffer[j].mass / buf.calcBuffer[j].dens
+			/ buf.calcBuffer[j].dens * (-1);
 	}
 
 }
@@ -945,18 +986,19 @@ __device__ void contributeP_updateterm(int i, float& updateterm, int cell, bufLi
 			continue;
 		c = h - dist;
 		nW_fac = paramCarrier.kspikydiff * c * c / dist; //nabla W
-		nablaWij = xij*nW_fac;
+		//nablaWij = xij*nW_fac;
+		nablaWij = nablakern(xij);
 
 		if (buf.displayBuffer[j].type!=TYPE_BOUNDARY) {
 			djj = buf.dii[j];
-			dji = nablaWij*buf.calcBuffer[i].mass*buf.calcBuffer[i].dens*buf.calcBuffer[i].dens*
+			dji = nablaWij*buf.calcBuffer[i].mass /buf.calcBuffer[i].dens/buf.calcBuffer[i].dens*
 				paramCarrier.dt * paramCarrier.dt;
 			djkpk = buf.dijpj[j] - dji * buf.press_l[i];
 			tmpf3 = dijpj - djj*buf.press_l[j] - djkpk;
 			updateterm += buf.calcBuffer[j].mass * dot(tmpf3, nablaWij);
 		}
 		else {
-			updateterm += buf.calcBuffer[i].restdens * buf.calcBuffer[j].dens * dot(dijpj,nablaWij);
+			//updateterm += buf.calcBuffer[i].restdens * buf.calcBuffer[j].dens * dot(dijpj,nablaWij);
 		}
 		
 	}
@@ -981,7 +1023,7 @@ __global__ void Pressure_Iter(bufList buf, int pnum) {
 	}
 
 	//update pressure
-	float omega = 0.3;
+	float omega = 0.1;
 	if (abs(buf.aii[i])<EPSILON) {
 		buf.press_l1[i] = buf.press_l[i];
 	}
@@ -990,11 +1032,12 @@ __global__ void Pressure_Iter(bufList buf, int pnum) {
 			*(buf.calcBuffer[i].restdens - buf.rho_adv[i] - updateterm); //<-- residue
 	}
 	
-	if(buf.press_l1[i]<0)
-		buf.press_l1[i]=0;
+	//if(buf.press_l1[i]<0)
+	//	buf.press_l1[i]=0;
 
 	float rhoil = buf.rho_adv[i]+updateterm+buf.aii[i]*buf.press_l[i];
-	
+	//if(i%100==0)
+	//	printf("%f\n",rhoil);
 	buf.densityResidue[i] = -buf.calcBuffer[i].restdens+(buf.rho_adv[i]+updateterm+buf.aii[i]*buf.press_l[i]);
 	
 	cfloat3 force(0,0,0);
@@ -1020,6 +1063,33 @@ __global__ void IntegrateIISPH(bufList buf, int pnum) {
 	//buf.calcBuffer[i].vel.Set(0,0,0);
 }
 
+
+__device__ void contributeIIDensity(uint i, float& res, uint cell, bufList buf) {
+	cfloat3 xij;
+	cfloat3 ipos = buf.displayBuffer[i].pos;
+	float massj;
+
+	if (buf.mgridcnt[cell] == 0)
+		return;
+
+	int cfirst = buf.mgridoff[cell];
+	int clast = cfirst + buf.mgridcnt[cell];
+
+	for (int j = cfirst; j < clast; j++) {
+
+		if (buf.displayBuffer[j].type==0) //fluid
+			massj = buf.calcBuffer[j].mass;
+		else if (buf.displayBuffer[j].type==1) //boundary
+			massj = buf.calcBuffer[i].restdens * buf.calcBuffer[j].dens; // fluid density * boundary volume
+
+		xij = ipos - buf.displayBuffer[j].pos;
+		xij = xij * paramCarrier.simscale;
+		res += kern(xij) * massj;
+	}
+	return;
+}
+
+
 __global__ void ComputeDensityIISPH(bufList buf, int pnum) {
 	uint i = blockIdx.x * blockDim.x + threadIdx.x;	// particle index				
 	if (i >= pnum) return;
@@ -1039,13 +1109,7 @@ __global__ void ComputeDensityIISPH(bufList buf, int pnum) {
 
 	//Get Fluid Density
 	for (int c=0; c < paramCarrier.neighbornum; c++) {
-		contributeDensity(i, sum, gc + paramCarrier.neighborid[c], buf);
+		contributeIIDensity(i, sum, gc + paramCarrier.neighborid[c], buf);
 	}
-
-	sum = sum * paramCarrier.kpoly6;
-
-	if (sum == 0.0)
-		sum = 1.0;
-
-	buf.calcBuffer[i].dens = 1/sum;
+	buf.calcBuffer[i].dens = sum;
 }

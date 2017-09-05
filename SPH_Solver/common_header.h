@@ -57,6 +57,7 @@ struct ParamCarrier {
 	float kspiky;
 	float kspikydiff;
 	float klaplacian;
+	float kspline;
 
 	//boundary particle
 	float bmass;

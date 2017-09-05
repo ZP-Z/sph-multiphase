@@ -290,10 +290,7 @@ void MfComputePressureCUDA ()
 	}
 }
 
-void ComputeDensityIISPH_CUDA() {
-	ComputeDensityIISPH <<< fcuda.numBlocks, fcuda.numThreads >>> (fbuf, fcuda.pnum);
-	cudaDeviceSynchronize();
-}
+
 
 //void MfComputeDriftVelCUDA ()
 //{
@@ -447,6 +444,11 @@ void InitializeSolid_CUDA(){
 
 
 //IISPH
+void ComputeDensityIISPH_CUDA() {
+	ComputeDensityIISPH <<< fcuda.numBlocks, fcuda.numThreads >>> (fbuf, fcuda.pnum);
+	cudaDeviceSynchronize();
+}
+
 void ComputeBoundaryDensity() {
 	ComputeBoundaryVolume <<< fcuda.numBlocks, fcuda.numThreads>>> (fbuf, fcuda.pnum);
 	cudaDeviceSynchronize();
@@ -483,7 +485,7 @@ void PressureSolve() {
 		//break;
 
 		if (sum<0.1 && iter>=2) {
-			break;
+			//break;
 		}
 		iter++;
 	}

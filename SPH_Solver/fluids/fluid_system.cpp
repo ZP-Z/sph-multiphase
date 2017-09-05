@@ -294,11 +294,12 @@ void FluidSystem::SetupSimpleSphCase(){
 	hostCarrier.radius /= scaleP3;
 	hostCarrier.num *= scaleP;*/
 
-	hostCarrier.cellsize = hostCarrier.smoothradius;
+	hostCarrier.cellsize = hostCarrier.smoothradius*2;
 	hostCarrier.kpoly6 = 315.0f / (64.0f * 3.141592 * pow(hostCarrier.smoothradius, 9.0f));
 	hostCarrier.kspiky =  15 / (3.141592 * pow(hostCarrier.smoothradius, 6.0f));
 	hostCarrier.kspikydiff = -45.0f / (3.141592 * pow(hostCarrier.smoothradius, 6.0f));
 	hostCarrier.klaplacian = 45.0f / (3.141592 * pow(hostCarrier.smoothradius, 6.0f));
+	hostCarrier.kspline = 1.0f/3.141593f/pow(hostCarrier.smoothradius, 3.0f);
 
 	for(int k=0; k<fluidnum; k++){
 		hostCarrier.massArr[k] = hostCarrier.mass * massratio[k];
@@ -524,7 +525,7 @@ void FluidSystem::RunIISPH() {
 	PressureSolve();
 	CheckTimer("IISPH Pressure Solve");
 	
-	Integration();
+	//Integration();
 	CheckTimer("IISPH Integration");
 
 	TransferFromCUDA(fbuf);
