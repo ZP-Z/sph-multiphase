@@ -9,13 +9,13 @@
 </Fluid>
 
 <MultiScene id="2">
-	<Num> 100000 </Num>
+	<Num> 1000000 </Num>
 	<SimScale>		0.005		</SimScale>
 	<Name>		Test 	</Name>
 	<DT>			0.0005 </DT>
 	<Radius> 0.01 </Radius>
 	<SmoothRadius> 0.015 </SmoothRadius>
-	<Viscosity>	 0.5		</Viscosity>
+	<Viscosity>	 1.5		</Viscosity>
 	<Mass> 0.00020543 </Mass>
 	<RestDensity> 1000 </RestDensity>
 	<IntStiff>		0.03	 </IntStiff>
@@ -29,8 +29,8 @@
 	<SoftBoundMin>	-40, 0, -40 </SoftBoundMin>
 	<SoftBoundMax>	 40, 100, 40 </SoftBoundMax>
 	
-    <VolMin0>		 -10,   5, -10	</VolMin0>
-	<VolMax0>		  10,  45,  10	</VolMax0>
+    <VolMin0>		 -20,   5, -10	</VolMin0>
+	<VolMax0>		  20,  45,  10	</VolMax0>
 	
 	<FSA>  1 </FSA> 
 	<BoundViscFactor> -1 </BoundViscFactor>

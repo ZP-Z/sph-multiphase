@@ -97,6 +97,7 @@ public:
 
 	void Initialize(int argc,char** argv);
 	void InitializeGL(int argc,char** argv);
+	void LoadParam();
 
 	void ReleaseGLBuffers(void);
 	
@@ -168,4 +169,5 @@ public:
 	int rendermode;
 	int frameNo;
 	bool bSnapshot;
+	
 };

@@ -37,7 +37,7 @@ void FluidSystem::Setup ()
 	
 	ResetParameters();
 	
-	runMode = RUN_IISPH;
+	runMode = RUN_SPH;
 	glutSetWindowTitle("Fluid SPH");
 
 	int setupCase = SPH_CASE;
@@ -312,7 +312,7 @@ void FluidSystem::SetupSimpleSphCase(){
 	
 	AddFluidVolume(fvmin[0], fvmax[0], pSpacing, cfloat3(0, 0, 0), 2);
 	
-    LoadBoundary("cfg\\boundary.cfg");
+    LoadBoundary("cfg\\boundary-wide.cfg");
 	
 	hostCarrier.num = pointNum;
 }

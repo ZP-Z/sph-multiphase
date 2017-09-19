@@ -20,6 +20,12 @@
 #define ROUND_EMIT 0
 #define SQUARE_EMIT 1
 
+
+#define SPH 0
+#define IISPH 1
+#define SolidSPH 2
+#define MPM 3
+
 class ParticleEmitter {
 public:
 	cfloat3 dir,

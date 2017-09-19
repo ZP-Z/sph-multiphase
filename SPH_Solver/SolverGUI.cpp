@@ -1013,7 +1013,6 @@ void SolverGUI::Initialize(int argc, char** argv) {
 }
 
 
-
 void SolverGUI::SetupSolver(){
 	psys = new FluidSystem();
 	psys->Setup();
@@ -1059,7 +1058,7 @@ void SolverGUI::render() {
 
 		//stokesian->step();
 		
-		if(bSnapshot  && frameNo % 5 ==0)
+		if(bSnapshot  && frameNo % 50 ==0)
 			TakeSnapshot();
 		frameNo++;
 		//measureFPS();
