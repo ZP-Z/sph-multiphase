@@ -12,14 +12,14 @@
 	<Num> 1000000 </Num>
 	<SimScale>		0.005		</SimScale>
 	<Name>		Test 	</Name>
-	<DT>			0.0005 </DT>
+	<DT>			0.0001 </DT>
 	<Radius> 0.01 </Radius>
 	<SmoothRadius> 0.015 </SmoothRadius>
 	<Viscosity>	 1.5		</Viscosity>
 	<Mass> 0.00020543 </Mass>
 	<RestDensity> 1000 </RestDensity>
 	<IntStiff>		0.03	 </IntStiff>
-	<ExtStiff>	50000.0	</ExtStiff>
+	<BoundStiff>	500000.0	</BoundStiff>
 	<ExtDamp>	0.0		</ExtDamp>
 	<ScaleP>	1	</ScaleP>
 	<ScaleDis>	0.9	</ScaleDis>
@@ -52,7 +52,7 @@
 	<solid_FSB>  0  </solid_FSB>
 	<SFlipControl> -0.0 </SFlipControl>
 
-	<SolidK> 1000 </SolidK>
+	<SolidK> 10000000 </SolidK>
 
 	<!-- drucker prager -->
 	<DP_Phi>  30  </DP_Phi>

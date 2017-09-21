@@ -83,6 +83,15 @@
 	void MpmColorTestCUDA();
 	void MpmGetMomentumCUDA();
 
+	void MpmParticleToGrid_CUDA();
+	void MpmParticleStress_CUDA();
+	void MpmNodeUpdate_CUDA();
+	void MpmParticleUpdate_CUDA();
+
+
+
+
+
 	//Solid
 	void ComputeSolidTensorCUDA();
 	void ComputeSolidForceCUDA();

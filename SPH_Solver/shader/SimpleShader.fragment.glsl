@@ -12,7 +12,10 @@ void main(void)
   vec2 uv = Vertex_UV.xy;
   uv.y *= -1.0;
   vec4 basecolor = texture(tex0,uv);
-  if(basecolor.a <= 0.1){
+  if(basecolor.a <= 0.5){
+      discard;
+  }
+  if(int_Color.w <= 0.1){
       discard;
   }
   out_Color = basecolor;

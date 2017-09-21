@@ -51,6 +51,7 @@ struct ParamCarrier {
 	float massArr[FLUID_NUM];
 	float densArr[FLUID_NUM];
 	float viscArr[FLUID_NUM];
+	float boundstiff;
 
 	//sph kernel
 	float kpoly6;

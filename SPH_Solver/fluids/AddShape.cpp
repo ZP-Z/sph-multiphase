@@ -341,7 +341,7 @@ void FluidSystem::SetupAddWall(cfloat3 min, cfloat3 max){
 				if(z>0)
 					displayBuffer[p].color.Set(1,1,1,0);
 				else
-					displayBuffer[p].color.Set(1, 1, 1, 0.1);
+					displayBuffer[p].color.Set(1, 1, 1, 0.2);
 				displayBuffer[p].type = TYPE_BOUNDARY;
 
 				calculationBuffer[p].mass = hostCarrier.bmass;

@@ -103,6 +103,7 @@ public:
 	void RunSimpleSPH();
 	void RunSolid();
 	void RunIISPH();
+	void RunMPM();
 
 	void LiquidToBubble();
 

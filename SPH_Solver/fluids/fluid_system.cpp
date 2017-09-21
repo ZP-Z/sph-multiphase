@@ -28,6 +28,7 @@ FluidSystem::FluidSystem ()
 #define RUN_SPH 1
 #define RUN_SOLID 2
 #define RUN_IISPH 3
+#define RUN_MPM 4
 
 #define SPH_CASE 1
 #define SOLID_CASE 2
@@ -37,7 +38,7 @@ void FluidSystem::Setup ()
 	
 	ResetParameters();
 	
-	runMode = RUN_SPH;
+	runMode = RUN_MPM;
 	glutSetWindowTitle("Fluid SPH");
 
 	int setupCase = SPH_CASE;
@@ -54,7 +55,7 @@ void FluidSystem::Setup ()
 	SetupDevice();
 	
 	BeforeFirstStep();
-	//SetupMPMGrid();
+	SetupMPMGrid();
 	//InitializeSolid_CUDA();
 }
 
@@ -467,6 +468,9 @@ void FluidSystem::Run()
 	case RUN_IISPH:
 		RunIISPH();
 		break;
+	case RUN_MPM:
+		RunMPM();
+		break;
 	}
 
 	//if (frameNo==20) {
@@ -504,6 +508,30 @@ void FluidSystem::RunSimpleSPH() {
 
 	//MpmColorTestCUDA();
 	//MpmGetMomentumCUDA();
+
+	TransferFromCUDA(fbuf);
+}
+
+void FluidSystem::RunMPM() {
+	ClearTimer();
+
+	//sorting particles
+	GetParticleIndexCUDA();
+	GetGridListCUDA();
+	RearrageDataCUDA();
+	CheckTimer("sorting");
+
+	//node mass,density,momentum
+	MpmParticleToGrid_CUDA();
+
+	//particle stress
+	MpmParticleStress_CUDA();
+
+	//node force, momentum update
+	MpmNodeUpdate_CUDA();
+
+	//particle update
+	MpmParticleUpdate_CUDA();
 
 	TransferFromCUDA(fbuf);
 }
@@ -688,8 +716,10 @@ void FluidSystem::AddFluidVolume(cfloat3 min, cfloat3 max, float spacing, cfloat
 					calculationBuffer[p].restdens = hostCarrier.densArr[cat];
 					calculationBuffer[p].mass = hostCarrier.massArr[cat];
 					calculationBuffer[p].visc = hostCarrier.viscArr[cat];
+					//calculationBuffer[p].vel = cfloat3(1,2,3);
 					n++;
 				}
+				//return;
 			}
 		}
 	}
@@ -803,6 +833,7 @@ void FluidSystem::ParseXML(int caseid){
 	hostCarrier.softminx = XMLGetFloat3("SoftBoundMin");
 	hostCarrier.softmaxx = XMLGetFloat3("SoftBoundMax");
 	hostCarrier.solidK = XMLGetFloat("SolidK");
+	hostCarrier.boundstiff = XMLGetFloat("BoundStiff");
 
 	//boundary
 	pele = boundElement;

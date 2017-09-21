@@ -213,6 +213,17 @@ void RearrageDataCUDA()
 
 
 
+
+
+
+
+
+
+
+
+
+
+
 void MpmAllocateBufferCUDA(ParamCarrier& param){
 
     //calculate size
@@ -246,6 +257,39 @@ void MpmGetMomentumCUDA() {
 	MpmGetMomentum <<< fcuda.mpmBlocks, fcuda.mpmThreads>>>(fbuf, fcuda.mpmSize);
 	cudaThreadSynchronize();
 }
+
+void MpmParticleToGrid_CUDA() {
+	MpmParticleToGrid<<<fcuda.mpmBlocks, fcuda.mpmThreads>>>(fbuf, fcuda.mpmSize);
+	cudaThreadSynchronize();
+}
+
+void MpmParticleStress_CUDA() {
+	MpmParticleStress<<<fcuda.numBlocks,fcuda.numThreads>>>(fbuf,fcuda.pnum);
+	cudaThreadSynchronize();
+}
+
+void MpmNodeUpdate_CUDA() {
+	MpmNodeUpdate<<<fcuda.mpmBlocks,fcuda.mpmThreads>>>(fbuf, fcuda.mpmSize);
+	cudaThreadSynchronize();
+}
+
+void MpmParticleUpdate_CUDA() {
+	MpmParticleUpdate<<<fcuda.numBlocks, fcuda.numThreads>>>(fbuf, fcuda.pnum);
+	cudaThreadSynchronize();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 void initSPH(float* restdensity,int* mftype){
