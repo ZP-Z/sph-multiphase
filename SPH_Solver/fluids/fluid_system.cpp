@@ -681,6 +681,7 @@ int FluidSystem::AddParticle()
 	calculationBuffer[n].bornid = n;
 	calculationBuffer[n].deformGrad.Set(unitMatrix);
 	calculationBuffer[n].pressure = 0;
+	calculationBuffer[n].stress.Set(0.0f);
 
 	pointNum++;
 	return n;
@@ -833,6 +834,7 @@ void FluidSystem::ParseXML(int caseid){
 	hostCarrier.softminx = XMLGetFloat3("SoftBoundMin");
 	hostCarrier.softmaxx = XMLGetFloat3("SoftBoundMax");
 	hostCarrier.solidK = XMLGetFloat("SolidK");
+	hostCarrier.solidG = XMLGetFloat("SolidG");
 	hostCarrier.boundstiff = XMLGetFloat("BoundStiff");
 
 	//boundary

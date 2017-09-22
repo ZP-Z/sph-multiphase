@@ -85,8 +85,8 @@ struct ParamCarrier {
 	int mpmNodeNum;
 
 	//solid
-	float solidK;
-
+	float solidK;//bulk modulus
+	float solidG;//shear modulus
 
 	//tensile instability
 	float w_deltax;
@@ -122,6 +122,7 @@ struct calculationPack {
 	int bornid;
 	cfloat3 accel;
 	cmat3 deformGrad;
+	cmat3 stress;//sigma
 	
 	cfloat3 X; //reference position
 	cmat3 invA;

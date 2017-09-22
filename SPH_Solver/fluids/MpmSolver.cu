@@ -241,7 +241,74 @@ __global__ void MpmParticleToGrid(bufList buf, int mpmSize) {
 	}
 }
 
-__global__ void MpmParticleStress(bufList buf, int pnum) {
+__device__ void Drucker_Prager_Tensor(bufList buf, float* plastic, float* strain, float* tensor, int pid) {
+
+	// deviatoric stress
+	float lambda;
+
+	float s[9];
+	for (int i=0; i<9; i++) {
+		plastic[i] = 0; //initialize
+		s[i] = tensor[i];
+	}
+	float tr = (s[0]+s[4]+s[8])/3.0f;
+	s[0] -= tr;
+	s[4] -= tr;
+	s[8] -= tr;
+
+	//second invariant
+	float j2 = 0;
+	for (int i=0; i<9; i++)
+		j2 += 0.5*s[i]*s[i];
+	if (j2<=0.0f)
+		j2 = 0.0f;
+	else
+		j2 = sqrt(j2);
+
+	//first invariant
+	float i1 = tensor[0]+tensor[4]+tensor[8];
+
+	float a_phi = paramCarrier.a_phi;
+	float a_psi = paramCarrier.a_psi;
+	float k_c   = paramCarrier.k_c;
+
+	float f = j2 + a_phi*i1 - k_c;
+	if (f<=0.0f) { //no yield
+		return;
+	}
+	else {
+		//buf.mclr[pid] = COLORA(0, 0, 0, 1);
+		float strain_tr = strain[0]+strain[4]+strain[8];
+		float s_epsilon=0;
+		for (int i=0; i<9; i++) {
+			s_epsilon += s[i]*strain[i];
+		}
+
+		if (j2<0.0001f) {
+			lambda = 0.0f;
+			j2 = 1.0f;
+		}
+		else {
+			lambda = 3*a_phi*paramCarrier.solidK*strain_tr + paramCarrier.solidG/j2*s_epsilon;
+			lambda /= (9*a_phi*a_psi*paramCarrier.solidK + paramCarrier.solidG);
+		}
+	}
+	int id;
+	for (int ii=0; ii<3; ii++) {
+		for (int ij=0; ij<3; ij++) {
+			id = ii*3+ij;
+			plastic[id] = paramCarrier.solidG/j2*s[id] * lambda;
+			if (ii==ij)
+				plastic[id] += 3*a_psi*paramCarrier.solidK * lambda;
+		}
+	}
+
+
+}
+
+
+
+__global__ void MpmParticleStressFiniteStrain(bufList buf, int pnum) {
 	uint i = blockIdx.x * blockDim.x + threadIdx.x;
 	if (i >= pnum)
 		return;
@@ -326,6 +393,97 @@ __global__ void MpmParticleStress(bufList buf, int pnum) {
 	//	tmp3[2][0], tmp3[2][1], tmp3[2][2]);
 }
 
+__global__ void MpmParticleStress(bufList buf, int pnum) {
+	uint i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i >= pnum)
+		return;
+	if (buf.displayBuffer[i].type==TYPE_BOUNDARY)
+		return;
+	
+	//particle vel gradient
+
+	cfloat3 pos = buf.displayBuffer[i].pos;
+	cfloat3 xj;
+	cfloat3 xij;
+	float dist;
+
+	cfloat3 velSum(0, 0, 0);
+	float weight;
+	float cellsize = paramCarrier.mpmcellsize;
+	float realcellsize = cellsize * paramCarrier.simscale;
+	//get particle mpmgrid cellid
+	int xid, yid, zid;
+	xid = (pos.x - paramCarrier.mpmXmin.x)/cellsize;
+	yid = (pos.y - paramCarrier.mpmXmin.y)/cellsize;
+	zid = (pos.z - paramCarrier.mpmXmin.z)/cellsize;
+	int mpmid = GetMpmIdx(xid, yid, zid);
+	cint3& res = paramCarrier.mpmRes;
+	cfloat3 nablaWij;
+	cmat3 v_x_nw;
+	cmat3 velGrad;
+	velGrad.Set(0.0f);
+	float densityp = 0.0f;
+
+	int tx, ty, tz, tid;
+	for (int ii=-1; ii<3; ii++) {
+		for (int ij=-1; ij<3; ij++) {
+			for (int ik=-1; ik<3; ik++) {
+				//4*4*4
+				tx = xid+ii;
+				ty = yid+ij;
+				tz = zid+ik;
+				if (tx<0 || tx>=res.x || ty<0 || ty>=res.y || tz<0 || tz>=res.z)
+					continue;
+				tid = GetMpmIdx(tx, ty, tz);
+				xj = buf.mpmPos[tid];
+				xij = (pos - xj)/cellsize;
+
+				weight = SplineWeight(xij);
+			
+				nablaWij = NablaSpline(xij);
+				TensorProd(buf.mpmVel[tid], nablaWij, v_x_nw);
+				mat3add(velGrad, v_x_nw, velGrad);
+
+				densityp += buf.mpmMass[tid] * weight / realcellsize / realcellsize / realcellsize;
+			}
+		}
+	}
+	buf.calcBuffer[i].dens = densityp;
+
+	//Cauchy Stress Tensor
+	cmat3 depsilon, omega;
+	cmat3 vgradT;
+	mat3transpose(velGrad, vgradT);
+	for (int ii=0; ii<9; ii++) {
+		depsilon.data[ii] = (velGrad.data[ii]+vgradT.data[ii])*0.5f;
+		omega.data[ii] = (velGrad.data[ii]-vgradT.data[ii])*0.5f;
+	}
+	float trEpsilon = (depsilon[0][0] + depsilon[1][1] + depsilon[2][2])/3.0f;
+	depsilon[0][0] -= trEpsilon;
+	depsilon[1][1] -= trEpsilon;
+	depsilon[2][2] -= trEpsilon;
+	cmat3 dsigma;
+	cmat3& sigma = buf.calcBuffer[i].stress;
+
+	for (int ii=0; ii<3; ii++) {
+		for (int ij=0; ij<3; ij++) {
+			dsigma[ii][ij] = 2*paramCarrier.solidG*depsilon[ii][ij];
+			for (int ik=0; ik<3; ik++) {
+				dsigma[ii][ij] += omega[ii][ik]*sigma[ik][ij] - sigma[ii][ik]*omega[ik][ij];
+			}
+			if(ii==ij)
+				dsigma[ii][ii] += paramCarrier.solidK * trEpsilon * 3.0f;
+		}
+	}
+	
+	for (int ii=0; ii<9; ii++) {
+		sigma.data[ii] += dsigma.data[ii] * paramCarrier.dt;
+	}
+
+	buf.stress[i] = sigma;
+}
+
+
 __device__ void GridCollisionDetection(cfloat3& pos, cfloat3& vel) {
 	// Get particle vars
 	register cfloat3 accel, norm;
@@ -341,12 +499,15 @@ __device__ void GridCollisionDetection(cfloat3& pos, cfloat3& vel) {
 
 	if (diff > EPSILON) {
 		norm = cfloat3(0, 1.0, 0);
-		adj = paramCarrier.boundstiff * diff;
-		norm *= adj; accel += norm;
+		if (dot(norm, vel)<0) {
+			vel.Set(0,0,0);
+		}
+		//adj = paramCarrier.boundstiff * diff;
+		//norm *= adj; accel += norm;
 	}
 
 
-	vel = accel*paramCarrier.dt + vel;				// v(t+1/2) = v(t-1/2) + a(t) dt
+	//vel = accel*paramCarrier.dt + vel;				// v(t+1/2) = v(t-1/2) + a(t) dt
 }
 
 __global__ void MpmNodeUpdate(bufList buf, int mpmSize) {
