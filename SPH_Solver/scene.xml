@@ -9,28 +9,28 @@
 </Fluid>
 
 <MultiScene id="2">
-	<Num> 1000000 </Num>
+	<Num> 500000 </Num>
 	<SimScale>		0.005		</SimScale>
 	<Name>		Test 	</Name>
 	<DT>			0.0005 </DT>
 	<Radius> 0.01 </Radius>
 	<SmoothRadius> 0.015 </SmoothRadius>
 	<Viscosity>	 1.5		</Viscosity>
-	<Mass> 0.00020543 </Mass>
+	<Mass> 0.00010543 </Mass>
 	<RestDensity> 1000 </RestDensity>
 	<IntStiff>		0.03	 </IntStiff>
 	<BoundStiff>	50000.0	</BoundStiff>
 	<ExtDamp>	0.0		</ExtDamp>
 	<ScaleP>	1	</ScaleP>
 	<ScaleDis>	0.9	</ScaleDis>
-	<PlaneGravDir>	0,-9.8,0	</PlaneGravDir>
+	<PlaneGravDir>	0,0,0	</PlaneGravDir>
 	<FluidCount> 3 </FluidCount>
 
 	<SoftBoundMin>	-40, 0, -40 </SoftBoundMin>
 	<SoftBoundMax>	 40, 100, 40 </SoftBoundMax>
 	
-    <VolMin0>		 -10,   5, -10	</VolMin0>
-	<VolMax0>		  10,  35,  10	</VolMax0>
+    <VolMin0>		 -5,   2, -5	</VolMin0>
+	<VolMax0>		  5,  35,  5	</VolMax0>
 	
 	<FSA>  1 </FSA> 
 	<BoundViscFactor> -1 </BoundViscFactor>
@@ -53,12 +53,12 @@
 	<SFlipControl> -0.0 </SFlipControl>
 
 	<SolidK> 10000000 </SolidK>
-	<SolidG> 10000000 </SolidG>
+	<SolidG> 1000000 </SolidG>
 
 	<!-- drucker prager -->
-	<DP_Phi>  30  </DP_Phi>
-	<DP_Psi>  9  </DP_Psi>
-	<DP_cohesion> 1.0 </DP_cohesion>
+	<DP_Phi>  20  </DP_Phi>
+	<DP_Psi>  10  </DP_Psi>
+	<DP_cohesion> 10.0 </DP_cohesion>
 	<BoundXZdamp> 0.3 </BoundXZdamp>
 	<Sleepvel> 0.00000001 </Sleepvel>
 

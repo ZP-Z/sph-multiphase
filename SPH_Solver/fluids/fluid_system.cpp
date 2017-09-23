@@ -522,7 +522,8 @@ void FluidSystem::RunMPM() {
 	CheckTimer("sorting");
 
 	//node mass,density,momentum
-	MpmParticleToGrid_CUDA();
+	//MpmParticleToGrid_CUDA();
+	MpmParticleToGrid_APIC_CUDA();
 
 	//particle stress
 	MpmParticleStress_CUDA();
@@ -531,7 +532,8 @@ void FluidSystem::RunMPM() {
 	MpmNodeUpdate_CUDA();
 
 	//particle update
-	MpmParticleUpdate_CUDA();
+	//MpmParticleUpdate_CUDA();
+	MpmParticleUpdate_APIC_CUDA();
 
 	TransferFromCUDA(fbuf);
 }
@@ -682,6 +684,7 @@ int FluidSystem::AddParticle()
 	calculationBuffer[n].deformGrad.Set(unitMatrix);
 	calculationBuffer[n].pressure = 0;
 	calculationBuffer[n].stress.Set(0.0f);
+	calculationBuffer[n].B.Set(0.0f);
 
 	pointNum++;
 	return n;
@@ -696,6 +699,7 @@ void FluidSystem::AddFluidVolume(cfloat3 min, cfloat3 max, float spacing, cfloat
 	int n=0,p;
 	int cntx, cnty, cntz;
 	cfloat3 cnts = (max - min) / spacing;
+	cfloat3 centre = min + (max-min)/2.0f;
 
 	float randx[3];
 	float ranlen = 0.2;
@@ -704,7 +708,7 @@ void FluidSystem::AddFluidVolume(cfloat3 min, cfloat3 max, float spacing, cfloat
 		for (int z=0; z < cnts.z; z++) {
 			for (int x=0; x < cnts.x; x++) {
 				cfloat3 rand3(rand(), rand(), rand());
-				rand3 = rand3/RAND_MAX*ranlen - ranlen*0.5;
+				rand3 = rand3/RAND_MAX*ranlen - ranlen*0.8;
 				pos = cfloat3(x, y, z)*spacing + min + rand3;
 
 				p = AddParticle();
@@ -718,6 +722,8 @@ void FluidSystem::AddFluidVolume(cfloat3 min, cfloat3 max, float spacing, cfloat
 					calculationBuffer[p].mass = hostCarrier.massArr[cat];
 					calculationBuffer[p].visc = hostCarrier.viscArr[cat];
 					//calculationBuffer[p].vel = cfloat3(1,2,3);
+					//calculationBuffer[p].vel.Set(centre.y-pos.y, pos.x-centre.x, 0);
+					//calculationBuffer[p].vel *= 0.1;
 					n++;
 				}
 				//return;
@@ -765,6 +771,18 @@ void FluidSystem::AddDeformableVolume(cfloat3 min, cfloat3 max, float spacing, i
 		}
 	}
 	printf("%d fluid has %d particles\n", cat, n);
+}
+
+void FluidSystem::SetDruckerPragerParam() {
+	float phi = hostCarrier.a_phi;
+	float psi = hostCarrier.a_psi;
+	float k_c = hostCarrier.k_c;
+
+	phi *= 3.141593f/180.0f;
+	psi *= 3.141593f/180.0f;
+	hostCarrier.a_phi = 2*sin(phi)/sqrt(3)/(3-sin(phi));
+	hostCarrier.a_psi = 2*sin(psi)/sqrt(3)/(3-sin(psi));
+	hostCarrier.k_c = 3*k_c*cos(psi)/sqrt(3)/(3-sin(phi));
 }
 
 using namespace tinyxml2;
@@ -836,6 +854,11 @@ void FluidSystem::ParseXML(int caseid){
 	hostCarrier.solidK = XMLGetFloat("SolidK");
 	hostCarrier.solidG = XMLGetFloat("SolidG");
 	hostCarrier.boundstiff = XMLGetFloat("BoundStiff");
+	
+	hostCarrier.a_phi = XMLGetFloat("DP_Phi");
+	hostCarrier.a_psi = XMLGetFloat("DP_Psi");
+	hostCarrier.k_c = XMLGetFloat("DP_cohesion");
+	SetDruckerPragerParam();
 
 	//boundary
 	pele = boundElement;

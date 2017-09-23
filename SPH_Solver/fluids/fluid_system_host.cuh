@@ -87,8 +87,8 @@
 	void MpmParticleStress_CUDA();
 	void MpmNodeUpdate_CUDA();
 	void MpmParticleUpdate_CUDA();
-
-
+	void MpmParticleToGrid_APIC_CUDA();
+	void MpmParticleUpdate_APIC_CUDA();
 
 
 

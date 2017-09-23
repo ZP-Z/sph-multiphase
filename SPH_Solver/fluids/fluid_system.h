@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "../common_header.h"
+//#include "../common_header.h"
 #include "CatToolBox.h"
 #include "fluid_system_kern.cuh"
 
@@ -47,6 +47,7 @@ public:
 		
 	void ResetParameters ();
 	void ParseXML(int caseid);
+	void SetDruckerPragerParam();
 	void SetupSpacing ();
 	void SetupGrid ();
 	void SetupDevice();

@@ -126,6 +126,7 @@ void FluidSetupCUDA(ParamCarrier& params){
 	cudaMalloc(&fbuf.aii, fcuda.szPnts*sizeof(float));
 	cudaMalloc(&fbuf.dii, fcuda.szPnts*sizeof(cfloat3));
 	cudaMalloc(&fbuf.dijpj, fcuda.szPnts*sizeof(cfloat3));
+	cudaMalloc(&fbuf.invDp, fcuda.szPnts*sizeof(cmat3));
 
 	cudaMalloc(&fbuf.MFidTable,	fcuda.szPnts*sizeof(int));
 	
@@ -278,8 +279,18 @@ void MpmParticleUpdate_CUDA() {
 	cudaThreadSynchronize();
 }
 
+void MpmParticleToGrid_APIC_CUDA() {
+	//MpmParticleDp<<<fcuda.numBlocks, fcuda.numThreads>>>(fbuf, fcuda.pnum);
+	//cudaThreadSynchronize();
+	
+	MpmParticleToGrid_APIC<<<fcuda.mpmBlocks, fcuda.mpmThreads>>>(fbuf, fcuda.mpmSize);
+	cudaThreadSynchronize();
+}
 
-
+void MpmParticleUpdate_APIC_CUDA() {
+	MpmParticleUpdate_APIC<<<fcuda.numBlocks, fcuda.numThreads>>>(fbuf, fcuda.pnum);
+	cudaThreadSynchronize();
+}
 
 
 

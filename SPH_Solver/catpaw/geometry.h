@@ -156,7 +156,23 @@ struct cmat3 {
 	HDFUNC float* operator[](int i){
 		return &data[i*3];
 	}
-	
+	HDFUNC float Det() {
+		return data[0]*(data[4]*data[8]-data[5]*data[7]) + data[1]*(data[5]*data[6]-data[3]*data[8]) + data[2]*(data[3]*data[7]-data[4]*data[6]);
+	}
+	HDFUNC cmat3& Inv() {
+		cmat3 inv;
+		float det = Det();
+		inv[0][0] = (data[4]*data[8]-data[5]*data[7])/det;
+		inv[0][1] = (data[2]*data[7]-data[1]*data[8])/det;
+		inv[0][2] = (data[1]*data[5]-data[2]*data[4])/det;
+		inv[1][0] = (data[5]*data[6]-data[3]*data[8])/det;
+		inv[1][1] = (data[0]*data[8]-data[2]*data[6])/det;
+		inv[1][2] = (data[2]*data[3]-data[0]*data[5])/det;
+		inv[2][0] = (data[3]*data[7]-data[4]*data[6])/det;
+		inv[2][1] = (data[1]*data[6]-data[0]*data[7])/det;
+		inv[2][2] = (data[0]*data[4]-data[1]*data[3])/det;
+		return inv;
+	}
 };
 
 //HDFUNC void mat3add(cmat3& a, cmat3& b, cmat3& c);

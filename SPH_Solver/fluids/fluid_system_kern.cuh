@@ -45,6 +45,7 @@ struct bufList {
 	float* aii; //IISPH
 	cfloat3* dii; //IISPH
 	cfloat3* dijpj; //IISPH
+	cmat3* invDp;//APIC
 
 	//For sorting
 	char*			msortbuf;

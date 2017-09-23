@@ -88,12 +88,15 @@ struct ParamCarrier {
 	float solidK;//bulk modulus
 	float solidG;//shear modulus
 
-	//tensile instability
-	float w_deltax;
-	float fijn;
+	//Drucker-Prager
 	float a_phi;
 	float a_psi;
 	float k_c;
+
+	//tensile instability
+	float w_deltax;
+	float fijn;
+	
 
 	float SFlipControl;
 	float LFlipControl;
@@ -123,14 +126,9 @@ struct calculationPack {
 	cfloat3 accel;
 	cmat3 deformGrad;
 	cmat3 stress;//sigma
+	cmat3 B;//apic
 	
 	cfloat3 X; //reference position
 	cmat3 invA;
 	
 };
-
-//remain unsorted
-struct IntermediatePack {
-	cmat3 stress;
-};
-
