@@ -237,11 +237,14 @@
     </CudaCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="catpaw\BI2Reader.h" />
     <ClInclude Include="catpaw\CatTimer.h" />
     <ClInclude Include="catpaw\CatToolBox.h" />
     <ClInclude Include="catpaw\catXMLhelper.h" />
+    <ClInclude Include="catpaw\Functions.h" />
     <ClInclude Include="catpaw\geometry.h" />
     <ClInclude Include="catpaw\glUtils.h" />
+    <ClInclude Include="catpaw\TypesDef.h" />
     <ClInclude Include="common_header.h" />
     <ClInclude Include="fluids\fluidMath.cuh" />
     <ClInclude Include="fluids\fluid_system.h" />
@@ -253,7 +256,9 @@
     <ClInclude Include="stokesian\stokesian.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="catpaw\BI2Reader.cpp" />
     <ClCompile Include="catpaw\catXMLHelper.cpp" />
+    <ClCompile Include="catpaw\Functions.cpp" />
     <ClCompile Include="catpaw\geometry.cpp" />
     <ClCompile Include="catpaw\glUtils.cpp" />
     <ClCompile Include="fluids\AddShape.cpp" />

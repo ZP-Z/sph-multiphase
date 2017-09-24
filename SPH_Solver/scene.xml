@@ -12,7 +12,7 @@
 	<Num> 500000 </Num>
 	<SimScale>		0.005		</SimScale>
 	<Name>		Test 	</Name>
-	<DT>			0.0005 </DT>
+	<DT>			0.00005 </DT>
 	<Radius> 0.01 </Radius>
 	<SmoothRadius> 0.015 </SmoothRadius>
 	<Viscosity>	 1.5		</Viscosity>
@@ -29,9 +29,15 @@
 	<SoftBoundMin>	-40, 0, -40 </SoftBoundMin>
 	<SoftBoundMax>	 40, 100, 40 </SoftBoundMax>
 	
-    <VolMin0>		 -5,   2, -5	</VolMin0>
-	<VolMax0>		  5,  35,  5	</VolMax0>
+    <VolMin0>		 -20,   2, -20	</VolMin0>
+	<VolMax0>		  20,  10,  20	</VolMax0>
+
+	<!--VolMin0>		 -7,   2, -7	</VolMin0>
+	<VolMax0>		  7,  40,  7	</VolMax0-->
 	
+	<VolMin1>		 -7,   2, -7	</VolMin1>
+	<VolMax1>		  7,  16,  7	</VolMax1>
+
 	<FSA>  1 </FSA> 
 	<BoundViscFactor> -1 </BoundViscFactor>
 	<FluidVConstraint> 1.5 </FluidVConstraint>
@@ -52,11 +58,11 @@
 	<solid_FSB>  0  </solid_FSB>
 	<SFlipControl> -0.0 </SFlipControl>
 
-	<SolidK> 10000000 </SolidK>
-	<SolidG> 1000000 </SolidG>
+	<SolidK> 1000000000 </SolidK>
+	<SolidG> 100000000 </SolidG>
 
 	<!-- drucker prager -->
-	<DP_Phi>  20  </DP_Phi>
+	<DP_Phi>  15  </DP_Phi>
 	<DP_Psi>  10  </DP_Psi>
 	<DP_cohesion> 10.0 </DP_cohesion>
 	<BoundXZdamp> 0.3 </BoundXZdamp>

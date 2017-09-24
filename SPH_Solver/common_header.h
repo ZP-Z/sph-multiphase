@@ -20,6 +20,7 @@
 #define TYPE_FLUID 0
 #define TYPE_BOUNDARY 1
 #define TYPE_ELASTIC 2
+#define TYPE_GRANULAR 3
 
 typedef unsigned int			uint;
 typedef unsigned short int		ushort;
@@ -127,6 +128,8 @@ struct calculationPack {
 	cmat3 deformGrad;
 	cmat3 stress;//sigma
 	cmat3 B;//apic
+	float solidG;
+	float solidK;
 	
 	cfloat3 X; //reference position
 	cmat3 invA;

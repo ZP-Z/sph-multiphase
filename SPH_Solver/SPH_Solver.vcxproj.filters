@@ -28,6 +28,12 @@
     <ClCompile Include="stokesian\stokesian.cpp">
       <Filter>stokesian</Filter>
     </ClCompile>
+    <ClCompile Include="catpaw\BI2Reader.cpp">
+      <Filter>cat_paw</Filter>
+    </ClCompile>
+    <ClCompile Include="catpaw\Functions.cpp">
+      <Filter>cat_paw</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="fluids\fluid_system.h">
@@ -71,6 +77,15 @@
     </ClInclude>
     <ClInclude Include="fluids\sph_solid.cuh">
       <Filter>fluid\CudaCode</Filter>
+    </ClInclude>
+    <ClInclude Include="catpaw\BI2Reader.h">
+      <Filter>cat_paw</Filter>
+    </ClInclude>
+    <ClInclude Include="catpaw\Functions.h">
+      <Filter>cat_paw</Filter>
+    </ClInclude>
+    <ClInclude Include="catpaw\TypesDef.h">
+      <Filter>cat_paw</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

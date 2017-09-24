@@ -308,6 +308,9 @@ __device__ void Drucker_Prager_Tensor(bufList buf, float* plastic, float* strain
 }
 
 __device__ cmat3& Drucker_Prager_Tensor(bufList buf, cmat3& epsilon, cmat3& sigma, int pid) {
+	
+	float solidG = buf.calcBuffer[pid].solidG;
+	float solidK = buf.calcBuffer[pid].solidK;
 
 	// deviatoric stress
 	float lambda;
@@ -350,21 +353,40 @@ __device__ cmat3& Drucker_Prager_Tensor(bufList buf, cmat3& epsilon, cmat3& sigm
 			s_epsilon += s.data[i]*epsilon.data[i];
 		}
 
-		lambda = 3*a_phi*paramCarrier.solidK*strain_tr + paramCarrier.solidG/j2*s_epsilon;
-		lambda /= (9*a_phi*a_psi*paramCarrier.solidK + paramCarrier.solidG);
+		lambda = 3*a_phi*solidK*strain_tr + solidG/j2*s_epsilon;
+		lambda /= (9*a_phi*a_psi*solidK + solidG);
 		//buf.displayBuffer[pid].color.Set(1,0,0,1);
 	}
 	
 	for (int ii=0; ii<3; ii++) {
 		for (int ij=0; ij<3; ij++) {
 			
-			plastic[ii][ij] = paramCarrier.solidG/j2 * s[ii][ij] * lambda;
+			plastic[ii][ij] = solidG/j2 * s[ii][ij] * lambda;
 			if (ii==ij)
-				plastic[ii][ij] += 3*a_psi*paramCarrier.solidK * lambda;
+				plastic[ii][ij] += 3*a_psi*solidK * lambda;
 		}
 	}
 
 
+}
+
+__device__ void ProjectStress(cmat3& sigma) {
+	float tr = sigma[0][0]+sigma[1][1]+sigma[2][2];
+	if (tr>0) { //expansion
+		sigma.Set(0.0f);
+	}
+}
+
+__device__ void Damage(cmat3& sigma) {
+	float tr = sigma[0][0]+sigma[1][1]+sigma[2][2];
+	if (tr<-100000) { //expansion
+		sigma[0][1]=0;
+		sigma[0][2]=0;
+		sigma[1][0]=0;
+		sigma[1][2]=0;
+		sigma[2][0]=0;
+		sigma[2][1]=0;
+	}
 }
 
 __global__ void MpmParticleStressFiniteStrain(bufList buf, int pnum) {
@@ -523,25 +545,49 @@ __global__ void MpmParticleStress(bufList buf, int pnum) {
 	//depsilon[2][2] -= trEpsilon;
 	cmat3 dsigma;
 	cmat3& sigma = buf.calcBuffer[i].stress;
+	float solidG = buf.calcBuffer[i].solidG;
+	float solidK = buf.calcBuffer[i].solidK;
 
 	for (int ii=0; ii<3; ii++) {
 		for (int ij=0; ij<3; ij++) {
-			dsigma[ii][ij] = 2*paramCarrier.solidG*depsilon[ii][ij];
+			dsigma[ii][ij] = 2*solidG*depsilon[ii][ij];
 			for (int ik=0; ik<3; ik++) {
 				dsigma[ii][ij] += omega[ii][ik]*sigma[ik][ij] - sigma[ii][ik]*omega[ik][ij];
 			}
 			if(ii==ij)
-				dsigma[ii][ii] += paramCarrier.solidK * trEpsilon * 3.0f - 2*paramCarrier.solidG*trEpsilon;
+				dsigma[ii][ii] += solidK * trEpsilon * 3.0f - 2*solidG*trEpsilon;
 		}
 	}
 	
-	cmat3 plastic = Drucker_Prager_Tensor(buf, depsilon, sigma, i);
+
+	cmat3 plastic;
+	plastic.Set(0.0f);
+	if(buf.displayBuffer[i].type==TYPE_GRANULAR)
+		plastic = Drucker_Prager_Tensor(buf, depsilon, sigma, i);
+
+
 
 	for (int ii=0; ii<9; ii++) {
 		sigma.data[ii] += dsigma.data[ii] * paramCarrier.dt;
 		sigma.data[ii] -= plastic.data[ii] * paramCarrier.dt;
 	}
 
+	if (buf.displayBuffer[i].type==TYPE_GRANULAR)
+		ProjectStress(sigma);
+	//if (buf.displayBuffer[i].type==TYPE_FLUID) {
+	//	float tr = sigma[0][0]+sigma[1][1]+sigma[2][2];
+	//	if (tr<-100000) { //expansion
+	//		sigma.Set(0.0f);
+	//		sigma[0][0]=tr/3;
+	//		sigma[1][1]=tr/3;
+	//		sigma[2][2]=tr/3;
+	//		buf.displayBuffer[i].color.Set(1, 0, 0, 0.5);
+	//	}
+	//	else
+	//		buf.displayBuffer[i].color.Set(0, 0, 1, 0.5);
+	//	
+	//}
+	//Damage(sigma);
 	buf.stress[i] = sigma;
 }
 
@@ -561,35 +607,47 @@ __device__ void GridCollisionDetection(cfloat3& pos, cfloat3& vel) {
 	if (diff > EPSILON) {
 		norm = cfloat3(0, 1.0, 0);
 		if (dot(norm, vel)<0) {
-			vel.Set(0,0,0);
+			vel.Set(0, 0, 0);
+			
+			/*float y = abs(vel.y);
+			vel.y=0;
+			float vh = sqrt(vel.x*vel.x + vel.z*vel.z);
+			float u = 1.5;
+			float uy = u*y;
+			if( uy > vh)
+				vel.Set(0,0,0);
+			else {
+				vel.x -= uy * vel.x/vh;
+				vel.y -= uy * vel.y/vh;
+			}*/
 		}
 	}
 	diff = -(pos.x - paramCarrier.softminx.x) * ss;
 	if (diff > EPSILON) {
 		norm = cfloat3(1.0, 0.0, 0);
 		if (dot(norm, vel)<0) {
-			vel.Set(0, 0, 0);
+			vel.x=0;
 		}
 	}
 	diff = -(pos.z - paramCarrier.softminx.z) * ss;
 	if (diff > EPSILON) {
 		norm = cfloat3(0, 0.0, 1.0);
 		if (dot(norm, vel)<0) {
-			vel.Set(0, 0, 0);
+			vel.z=0;
 		}
 	}
 	diff = (pos.x - paramCarrier.softmaxx.x) * ss;
 	if (diff > EPSILON) {
 		norm = cfloat3(-1.0, 0.0, 0);
 		if (dot(norm, vel)<0) {
-			vel.Set(0, 0, 0);
+			vel.x=0;
 		}
 	}
 	diff = (pos.z - paramCarrier.softmaxx.z) * ss;
 	if (diff > EPSILON) {
 		norm = cfloat3(0, 0.0, -1.0);
 		if (dot(norm, vel)<0) {
-			vel.Set(0, 0, 0);
+			vel.z=0;
 		}
 	}
 

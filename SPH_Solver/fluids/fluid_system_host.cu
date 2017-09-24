@@ -265,7 +265,10 @@ void MpmParticleToGrid_CUDA() {
 }
 
 void MpmParticleStress_CUDA() {
-	MpmParticleStress<<<fcuda.numBlocks,fcuda.numThreads>>>(fbuf,fcuda.pnum);
+	//MpmParticleStressFiniteStrain<<<fcuda.numBlocks,fcuda.numThreads>>>(fbuf,fcuda.pnum);
+	
+	MpmParticleStress<<<fcuda.numBlocks, fcuda.numThreads>>>(fbuf, fcuda.pnum);
+
 	cudaThreadSynchronize();
 }
 

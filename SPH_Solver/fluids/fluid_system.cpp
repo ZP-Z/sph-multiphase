@@ -284,6 +284,16 @@ void FluidSystem::SetupDevice() {
 //	
 //}
 
+void FluidSystem::SetSolidModulus(float E, float v) {
+	solidE = E;
+	solidv = v;
+	solidG = solidE / 2/ (1+solidv);
+	solidK = solidE / 3/ (1-2*solidv);
+	printf("Setting G:%f K:%f\n",solidG,solidK);
+}
+
+
+
 void FluidSystem::SetupSimpleSphCase(){
 	
 	ParseXML(2);
@@ -311,8 +321,24 @@ void FluidSystem::SetupSimpleSphCase(){
 	AllocateParticles ( maxPointNum );
 	SetupSpacing ();
 	
-	AddFluidVolume(fvmin[0], fvmax[0], pSpacing, cfloat3(0, 0, 0), 2);
 	
+	SetSolidModulus(10000000000, 0.3);
+	AddGranularVolume(fvmin[0], fvmax[0], pSpacing, cfloat3(0, 0, 0));
+	//AddFluidVolume(fvmin[0], fvmax[0], pSpacing, cfloat3(0, 0, 0),2);
+	SetSolidModulus(10000000000, 0.3);
+	AddFluidVolume(fvmin[1], fvmax[1], pSpacing, cfloat3(5, 15, 0), 2);
+	
+	if (false) {
+		SetSolidModulus(500000000, 0.3);
+		BI2Reader* bi2readers;
+		bi2readers = new BI2Reader("boundaryout\\bunny\\bunny_def.bi2");
+		bi2readers->GetInfo(false);
+		bi2readers->PrintInfo();
+		AddShape(*bi2readers, TYPE_ELASTIC);
+		delete bi2readers;
+	}
+	
+
     LoadBoundary("cfg\\boundary-wide.cfg");
 	
 	hostCarrier.num = pointNum;
@@ -702,18 +728,18 @@ void FluidSystem::AddFluidVolume(cfloat3 min, cfloat3 max, float spacing, cfloat
 	cfloat3 centre = min + (max-min)/2.0f;
 
 	float randx[3];
-	float ranlen = 0.2;
+	float ranlen = 0.4;
 
 	for (int y = 0; y < cnts.y; y ++) {
 		for (int z=0; z < cnts.z; z++) {
 			for (int x=0; x < cnts.x; x++) {
 				cfloat3 rand3(rand(), rand(), rand());
-				rand3 = rand3/RAND_MAX*ranlen - ranlen*0.8;
+				rand3 = rand3/RAND_MAX*ranlen - ranlen*0.5;
 				pos = cfloat3(x, y, z)*spacing + min + rand3;
 
 				p = AddParticle();
 				if (p >= 0) {
-					displayBuffer[p].pos = pos;
+					displayBuffer[p].pos = pos+offs;
 					//displayBuffer[p].color.Set((float)rand()/RAND_MAX, (float)rand()/RAND_MAX, (float)rand()/RAND_MAX,1.0);
 					displayBuffer[p].color.Set(0.2, 0.5, 0.8, 0.5);
 					displayBuffer[p].type = TYPE_FLUID;
@@ -721,7 +747,9 @@ void FluidSystem::AddFluidVolume(cfloat3 min, cfloat3 max, float spacing, cfloat
 					calculationBuffer[p].restdens = hostCarrier.densArr[cat];
 					calculationBuffer[p].mass = hostCarrier.massArr[cat];
 					calculationBuffer[p].visc = hostCarrier.viscArr[cat];
-					//calculationBuffer[p].vel = cfloat3(1,2,3);
+					calculationBuffer[p].vel = cfloat3(0,-5,0);
+					calculationBuffer[p].solidG = solidG;
+					calculationBuffer[p].solidK = solidK;
 					//calculationBuffer[p].vel.Set(centre.y-pos.y, pos.x-centre.x, 0);
 					//calculationBuffer[p].vel *= 0.1;
 					n++;
@@ -731,6 +759,84 @@ void FluidSystem::AddFluidVolume(cfloat3 min, cfloat3 max, float spacing, cfloat
 		}
 	}
 	printf("No.%d fluid has %d particles\n", cat, n);
+}
+
+void FluidSystem::AddGranularVolume(cfloat3 min, cfloat3 max, float spacing, cfloat3 offs)
+{
+	if (pointNum==maxPointNum)
+		printf("Max pointnum reached.\n");
+
+	cfloat3 pos;
+	int n=0, p;
+	int cntx, cnty, cntz;
+	cfloat3 cnts = (max - min) / spacing;
+	cfloat3 centre = min + (max-min)/2.0f;
+
+	float randx[3];
+	float ranlen = 0.4;
+
+	for (int y = 0; y < cnts.y; y ++) {
+		for (int z=0; z < cnts.z; z++) {
+			for (int x=0; x < cnts.x; x++) {
+				cfloat3 rand3(rand(), rand(), rand());
+				rand3 = rand3/RAND_MAX*ranlen - ranlen*0.5;
+				pos = cfloat3(x, y, z)*spacing + min + rand3;
+
+				p = AddParticle();
+				if (p >= 0) {
+					displayBuffer[p].pos = pos+offs;
+					displayBuffer[p].color.Set(0.7+(float)rand()/4/RAND_MAX, 0.6+(float)rand()/4/RAND_MAX, 0.1+(float)rand()/4/RAND_MAX,1.0);
+					//displayBuffer[p].color.Set(0.2, 0.5, 0.8, 0.5);
+					displayBuffer[p].type = TYPE_GRANULAR;
+
+					calculationBuffer[p].restdens = hostCarrier.densArr[2];
+					calculationBuffer[p].mass = hostCarrier.massArr[2];
+					calculationBuffer[p].visc = hostCarrier.viscArr[2];
+					calculationBuffer[p].solidG = solidG;
+					calculationBuffer[p].solidK = solidK;
+					//calculationBuffer[p].vel = cfloat3(1,2,3);
+					//calculationBuffer[p].vel.Set(centre.y-pos.y, pos.x-centre.x, 0);
+					//calculationBuffer[p].vel *= 0.1;
+					n++;
+				}
+				//return;
+			}
+		}
+	}
+	printf(" granular has %d particles\n", n);
+}
+
+void FluidSystem::AddShape(BI2Reader bi2reader, int cat)
+{
+	float x, y, z;
+
+	for (int i = 0; i<bi2reader.info.np; i++)
+	{
+		int p = AddParticle();
+
+		if (p!=-1)
+		{
+			cfloat3 offs(0,0,0);
+			float scale = 0.005;
+			//	printf("%f %f %f\n",bi2reader.info.Pos[i].x/m_Param[PSIMSCALE],bi2reader.info.Pos[i].y/m_Param[PSIMSCALE],bi2reader.info.Pos[i].z/m_Param[PSIMSCALE]);
+			//(mPos+p)->Set (bi2reader.info.Pos[i].x/m_Param[PSIMSCALE],bi2reader.info.Pos[i].y/m_Param[PSIMSCALE],bi2reader.info.Pos[i].z/m_Param[PSIMSCALE]);
+			x=bi2reader.info.Pos[i].x/scale;
+			z=bi2reader.info.Pos[i].y/scale;
+			y=bi2reader.info.Pos[i].z/scale;
+
+			calculationBuffer[p].vel = cfloat3(0, -1.5, 0);
+			displayBuffer[p].pos = cfloat3(x,y,z) + offs;
+			//displayBuffer[p].color.Set(0.7+(float)rand()/4/RAND_MAX, 0.6+(float)rand()/4/RAND_MAX, 0.1+(float)rand()/4/RAND_MAX, 1.0);
+			displayBuffer[p].color.Set(0.2, 0.5, 0.8, 0.5);
+			displayBuffer[p].type = TYPE_FLUID;
+
+			calculationBuffer[p].restdens = hostCarrier.densArr[2];
+			calculationBuffer[p].mass = hostCarrier.massArr[2];
+			calculationBuffer[p].visc = hostCarrier.viscArr[2];
+			calculationBuffer[p].solidG = solidG;
+			calculationBuffer[p].solidK = solidK;
+		}
+	}
 }
 
 void FluidSystem::AddDeformableVolume(cfloat3 min, cfloat3 max, float spacing, int cat)
@@ -837,6 +943,8 @@ void FluidSystem::ParseXML(int caseid){
 	fluidnum = XMLGetInt("FluidCount");
 	fvmin[0] = XMLGetFloat3("VolMin0");
 	fvmax[0] = XMLGetFloat3("VolMax0");
+	fvmin[1] = XMLGetFloat3("VolMin1");
+	fvmax[1] = XMLGetFloat3("VolMax1");
 	XMLGetFloatN(massratio, 3, "MassRatio");
 	XMLGetFloatN(densratio,3,"DensityRatio");
 	XMLGetFloatN(viscratio, 3, "ViscRatio");
@@ -897,7 +1005,7 @@ void FluidSystem::SetupMPMGrid() {
 	//parameter
 	mpmxmin = hostCarrier.softminx - cfloat3(10,10,10);
 	mpmxmax = hostCarrier.softmaxx + cfloat3(10,10,10);
-	mpmcellsize = pSpacing * 2;
+	mpmcellsize = pSpacing * 1.5;
 	cfloat3 tmp = (mpmxmax - mpmxmin) / mpmcellsize + cfloat3(2,2,2); //node number of each dimension
 	mpmres.Set(tmp.x,tmp.y,tmp.z);
 	mpmxmax = mpmxmin + (cfloat3)(mpmres+cint3(-1,-1,-1)) * mpmcellsize;

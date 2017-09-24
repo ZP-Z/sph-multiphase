@@ -9,6 +9,7 @@
 #include <math.h>
 
 //#include "../common_header.h"
+#include "BI2Reader.h"
 #include "CatToolBox.h"
 #include "fluid_system_kern.cuh"
 
@@ -72,8 +73,10 @@ public:
 
 	//Code Generate Entities
 	void AddFluidVolume( cfloat3 min, cfloat3 max, float spacing, cfloat3 offs, int cat);// cat: category label
+	void AddGranularVolume(cfloat3 min, cfloat3 max, float spacing, cfloat3 offs);
 	//void SetupMfAddDeformVolume( cfloat3 min, cfloat3 max, float spacing, cfloat3 offs, int type);
 	void AddDeformableVolume( cfloat3 min, cfloat3 max, float spacing, int cat);
+	void AddShape(BI2Reader bi2reader, int cat);
 
 	//Code Generate Boundaries
     void LoadBoundary(std::string boundfile);
@@ -162,4 +165,11 @@ public:
 	void SetupMPMGrid();
 	void ReleaseMPMGrid();
 	void CopyMPMFromDevice();
+
+	//solid parameter - state machine
+	float solidG;
+	float solidK;
+	float solidE;
+	float solidv;
+	void SetSolidModulus(float E,float v);
 };
